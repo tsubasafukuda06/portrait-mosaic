@@ -22,6 +22,20 @@ const ZONES = [
 const ORIGIN_CX = CANVAS_W * 0.50;
 const ORIGIN_CY = CANVAS_H * 0.40;
 
+// 9ゾーンそれぞれのアニメーション目的地（canvas座標）
+// 画面を3×3に分割、タップしたゾーンに対応する顔の部位へ移動
+const ZONE_TARGETS = [
+  [CANVAS_W * 0.25, CANVAS_H * 0.15],  // 0: 左上  → 顔の左上
+  [CANVAS_W * 0.50, CANVAS_H * 0.15],  // 1: 上中  → 顔の上中央（髪）
+  [CANVAS_W * 0.75, CANVAS_H * 0.15],  // 2: 右上  → 顔の右上
+  [CANVAS_W * 0.15, CANVAS_H * 0.42],  // 3: 左中  → 左耳あたり
+  [CANVAS_W * 0.50, CANVAS_H * 0.42],  // 4: 中央  → 顔の中心
+  [CANVAS_W * 0.85, CANVAS_H * 0.42],  // 5: 右中  → 右耳あたり
+  [CANVAS_W * 0.25, CANVAS_H * 0.75],  // 6: 左下  → 顎の左
+  [CANVAS_W * 0.50, CANVAS_H * 0.80],  // 7: 下中  → 顎の中央
+  [CANVAS_W * 0.75, CANVAS_H * 0.75],  // 8: 右下  → 顎の右
+];
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let isTracking = false;
 let audioCtx   = null;
@@ -49,10 +63,10 @@ function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 function lerp(a, b, t) { return a + (b - a) * t; }
 
 // ── ゾーン中心アニメーション トリガー ─────────────────────────────────────────
-function triggerAnim(screenX, screenY) {
-  // スクリーン座標 → canvas座標
-  animToCX  = (screenX / window.innerWidth)  * CANVAS_W;
-  animToCY  = (screenY / window.innerHeight) * CANVAS_H;
+function triggerAnim(zone) {
+  const [cx, cy] = ZONE_TARGETS[zone];
+  animToCX   = cx;
+  animToCY   = cy;
   animFromCX = dynCX;
   animFromCY = dynCY;
   animPhase  = 'out';
@@ -175,7 +189,7 @@ document.addEventListener('click', (e) => {
   const zone = getZone(e.clientX, e.clientY);
   playTone(ZONE_FREQ[zone]);
 
-  triggerAnim(e.clientX, e.clientY);
+  triggerAnim(zone);
   ensureLoop();
 });
 
