@@ -6,7 +6,7 @@ wink 2.mov の各フレームにモザイク処理を適用して wink_mosaic.mp
 import cv2
 import numpy as np
 
-INPUT  = "reference/wink 2.mov"
+INPUT  = "reference/wink3.mov"
 OUTPUT = "reference/wink_mosaic.mp4"
 
 # ── カバー.js と同じ設定 ──────────────────────────────────────────────────────
