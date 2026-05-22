@@ -1,47 +1,67 @@
 'use strict';
-// MindARThree (Three.js版) を使用
-// import mapで "three" をローカルファイルに解決
 
-import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
+import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js';
 
-let mindarThree = null;
-let isTracking  = false;
-let p5Instance  = null;
+let controller = null;
+let isTracking = false;
+let p5Instance = null;
+
+// ── カメラ起動 ────────────────────────────────────────────────────────────────
+async function startCamera() {
+  const video = document.getElementById('video');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' },
+    audio: false,
+  });
+  video.srcObject = stream;
+  await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
+  await video.play();
+  return video;
+}
 
 // ── AR起動 ────────────────────────────────────────────────────────────────────
 async function startAR() {
-  const container = document.getElementById('ar-container');
+  const video = await startCamera();
+  setDebug('カメラ起動 ✅');
 
-  mindarThree = new window.MINDAR.IMAGE.MindARThree({
-    container,
-    imageTargetSrc: 'targets.mind',
-    uiLoading:  'no',
-    uiScanning: 'no',
-    uiError:    'no',
+  const response = await fetch('targets.mind');
+  if (!response.ok) throw new Error('targets.mind が見つかりません');
+  const buffer = await response.arrayBuffer();
+
+  controller = new window.MINDAR.IMAGE.Controller({
+    inputWidth:  video.videoWidth,
+    inputHeight: video.videoHeight,
+    maxTrack: 1,
+    onUpdate: ({ type, targetIndex, worldMatrix }) => {
+      if (type === 'processDone') return; // フレーム処理完了（毎フレーム）
+
+      if (type === 'updateMatrix') {
+        if (worldMatrix !== null) {
+          // ターゲット検出
+          if (!isTracking) {
+            isTracking = true;
+            showOverlay();
+            setDebug('✅ 表紙を認識中');
+          }
+        } else {
+          // ターゲット消失
+          if (isTracking) {
+            isTracking = false;
+            hideOverlay();
+            setDebug('🔍 表紙を探しています...');
+          }
+        }
+      }
+    },
   });
 
-  const { renderer, scene, camera } = mindarThree;
+  controller.addImageTargetsFromBuffer(buffer);
 
-  const anchor = mindarThree.addAnchor(0);
-
-  anchor.onTargetFound = () => {
-    isTracking = true;
-    showOverlay();
-    setDebug('✅ 表紙を認識中');
-  };
-
-  anchor.onTargetLost = () => {
-    isTracking = false;
-    hideOverlay();
-    setDebug('🔍 表紙を探しています...');
-  };
+  // GPU ウォームアップ（初回検出を速くする）
+  controller.dummyRun(video);
 
   setDebug('🔍 表紙を探しています...');
-  await mindarThree.start();
-
-  renderer.setAnimationLoop(() => {
-    renderer.render(scene, camera);
-  });
+  controller.processVideo(video);
 }
 
 // ── p5.js オーバーレイ ────────────────────────────────────────────────────────
@@ -80,10 +100,9 @@ function hideOverlay() {
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
   console.log('タップ:', e.clientX, e.clientY);
-  // ── patatap的エフェクトをここに実装 ──
 });
 
-// ── デバッグ表示 ──────────────────────────────────────────────────────────────
+// ── ユーティリティ ────────────────────────────────────────────────────────────
 function setDebug(msg) {
   const el = document.getElementById('debug');
   if (el) el.textContent = msg;
