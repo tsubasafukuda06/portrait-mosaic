@@ -76,16 +76,20 @@ initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   document.getElementById('start-screen').style.display = 'none';
-  setDebug('🔍 表紙を探しています...');
+  setDebug('⏳ 初期化中...');
 
   const sceneEl = document.querySelector('a-scene');
 
-  const doStart = () => {
+  const doStart = async () => {
+    setDebug('⏳ AR起動中...');
     try {
       setupAREvents();
-      sceneEl.components['mindar-image'].startAR();
+      const mindar = sceneEl.components['mindar-image'];
+      if (!mindar) { showError('MindARコンポーネントが見つかりません'); return; }
+      await mindar.startAR();
+      setDebug('🔍 表紙を探しています...');
     } catch (err) {
-      showError('エラー: ' + (err.message || String(err)));
+      showError('startARエラー: ' + (err.message || String(err)));
     }
   };
 
@@ -93,6 +97,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   if (sceneEl.hasLoaded) {
     doStart();
   } else {
+    setDebug('⏳ シーン読み込み中...');
     sceneEl.addEventListener('loaded', doStart, { once: true });
   }
 });
