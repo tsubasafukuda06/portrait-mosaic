@@ -39,6 +39,7 @@ const ZONE_TARGETS = [
 // ── State ─────────────────────────────────────────────────────────────────────
 let isTracking    = false;
 let audioCtx      = null;
+let winkBuffer    = null;   // wink.wav のデコード済みバッファ
 let faceCanvas    = null;
 let faceCtx       = null;
 let srcPixels     = null;
@@ -178,8 +179,34 @@ const ZONE_FREQ = [
   493.9, 523.3, 587.3,
 ];
 
-function initAudio() {
+async function initAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // wink.wav をデコード（fetch済みのrawがあれば即デコード）
+  if (winkRaw) {
+    winkBuffer = await audioCtx.decodeAudioData(winkRaw);
+    winkRaw = null;
+  }
+}
+
+// 起動時に先読み（ArrayBufferとして保持、audioCtx前でも可）
+let winkRaw = null;
+fetch('sound/wink.wav')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    winkRaw = buf;
+    // audioCtxが既にあればすぐデコード
+    if (audioCtx) audioCtx.decodeAudioData(buf).then(b => { winkBuffer = b; winkRaw = null; });
+  });
+
+function playWinkSound() {
+  if (!audioCtx || !winkBuffer) return;
+  const src  = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain();
+  src.buffer = winkBuffer;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+  src.start();
 }
 
 function playTone(freq) {
@@ -287,12 +314,13 @@ function playWink() {
   const vid = document.getElementById('wink-video');
   if (!vid) return;
 
-  // 連打: 0.4秒地点から再スタート、sparkleを即スポーン
+  // 連打: 0.4秒地点から再スタート、sparkleと音を即トリガー
   vid.onended = null;
   vid.currentTime = 0.4;
   vid.play();
   isPlayingWink = true;
 
+  playWinkSound();
   spawnSparkles();
 
   // tickループは1本だけ維持
