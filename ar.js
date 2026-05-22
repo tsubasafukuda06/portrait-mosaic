@@ -2,9 +2,10 @@
 
 import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js';
 
-let controller = null;
-let isTracking = false;
-let p5Instance = null;
+let controller  = null;
+let isTracking  = false;
+let p5Instance  = null;
+let frameCount  = 0;
 
 // ── カメラ起動 ────────────────────────────────────────────────────────────────
 async function startCamera() {
@@ -33,22 +34,22 @@ async function startAR() {
     inputHeight: video.videoHeight,
     maxTrack: 1,
     onUpdate: ({ type, targetIndex, worldMatrix }) => {
-      if (type === 'processDone') return; // フレーム処理完了（毎フレーム）
-
+      if (type === 'processDone') {
+        frameCount++;
+        setDebug(`🔍 探索中 (${frameCount}フレーム処理済)`);
+        return;
+      }
       if (type === 'updateMatrix') {
         if (worldMatrix !== null) {
-          // ターゲット検出
           if (!isTracking) {
             isTracking = true;
             showOverlay();
             setDebug('✅ 表紙を認識中');
           }
         } else {
-          // ターゲット消失
           if (isTracking) {
             isTracking = false;
             hideOverlay();
-            setDebug('🔍 表紙を探しています...');
           }
         }
       }
@@ -56,11 +57,6 @@ async function startAR() {
   });
 
   controller.addImageTargetsFromBuffer(buffer);
-
-  // GPU ウォームアップ（初回検出を速くする）
-  controller.dummyRun(video);
-
-  setDebug('🔍 表紙を探しています...');
   controller.processVideo(video);
 }
 
