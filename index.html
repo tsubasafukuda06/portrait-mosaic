@@ -91,10 +91,20 @@
 
   <div id="debug"></div>
 
-  <!-- ライブラリ（CDN） -->
-  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"
-    onerror="document.getElementById('debug').textContent='CDN mindar LOAD FAILED'"></script>
+  <!-- エラーキャッチ -->
+  <script>
+    window.addEventListener('error', function(e) {
+      const d = document.getElementById('debug');
+      if (d) d.textContent = 'ERR: ' + (e.message||'').substring(0,80) + ' [' + (e.filename||'').split('/').pop() + ':' + e.lineno + ']';
+    }, true);
+  </script>
+  <!-- ライブラリ（ローカル） -->
+  <script src="aframe.min.js"
+    onload="document.getElementById('debug').textContent='aframe OK'"
+    onerror="document.getElementById('debug').textContent='aframe FAIL'"></script>
+  <script src="mindar-image-aframe.prod.js"
+    onload="document.getElementById('debug').textContent='mindar OK'"
+    onerror="document.getElementById('debug').textContent='mindar FAIL'"></script>
   <!-- p5.js -->
   <script src="p5.min.js"></script>
   <!-- AR制御 -->
