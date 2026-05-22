@@ -1,61 +1,60 @@
 'use strict';
+// ES module として読み込まれる（index.html で type="module"）
+// MindAR standalone Controller版 (Three.js不要)
 
-// ── MindAR + p5.js AR骨格 ────────────────────────────────────────────────────
-// 依存: Three.js, MindAR (mindar-image-three.prod.js), p5.js
+import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js';
 
-let mindarThree = null;
-let anchor      = null;
+let controller  = null;
 let isTracking  = false;
-
-// p5.js スケッチ（オーバーレイ）
 let p5Instance  = null;
 
-// ── AR初期化 ─────────────────────────────────────────────────────────────────
+// ── カメラ起動 ────────────────────────────────────────────────────────────────
+async function startCamera() {
+  const video = document.getElementById('video');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' },
+    audio: false,
+  });
+  video.srcObject = stream;
+  await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
+  await video.play();
+  return video;
+}
+
+// ── AR起動 ────────────────────────────────────────────────────────────────────
 async function startAR() {
-  const container = document.getElementById('ar-container');
+  const video = await startCamera();
 
-  mindarThree = new window.MINDAR.IMAGE.MindARThree({
-    container,
-    imageTargetSrc: 'targets.mind', // ← コンパイル済み .mind ファイルを配置
-    uiLoading:  'yes',
-    uiScanning: 'yes',
-    uiError:    'yes',
+  const response = await fetch('targets.mind');
+  if (!response.ok) throw new Error('targets.mind が見つかりません');
+  const buffer = await response.arrayBuffer();
+
+  controller = new window.MINDAR.IMAGE.Controller({
+    inputWidth:  video.videoWidth,
+    inputHeight: video.videoHeight,
+    maxTrack: 1,
+    onUpdate: ({ type }) => {
+      if (type === 'updateMatrix') {
+        if (!isTracking) { isTracking = true; showOverlay(); }
+      } else if (type === 'missing') {
+        if (isTracking)  { isTracking = false; hideOverlay(); }
+      }
+    },
   });
 
-  const { renderer, scene, camera } = mindarThree;
-
-  // ターゲット0番を監視
-  anchor = mindarThree.addAnchor(0);
-
-  anchor.onTargetFound = () => {
-    isTracking = true;
-    showOverlay();
-    console.log('ターゲット検出');
-  };
-
-  anchor.onTargetLost = () => {
-    isTracking = false;
-    hideOverlay();
-    console.log('ターゲット消失');
-  };
-
-  await mindarThree.start();
-
-  renderer.setAnimationLoop(() => {
-    renderer.render(scene, camera);
-  });
+  await controller.setup([buffer]);
+  controller.processVideo(video);
 }
 
 // ── p5.js オーバーレイ ────────────────────────────────────────────────────────
 function initOverlay() {
-  const sketch = (p) => {
+  p5Instance = new p5((p) => {
     p.setup = () => {
       const cnv = p.createCanvas(window.innerWidth, window.innerHeight);
-      cnv.id('p5-overlay');
       cnv.style('position', 'fixed');
       cnv.style('top', '0');
       cnv.style('left', '0');
-      cnv.style('pointer-events', 'none'); // タップはDOMに貫通させる
+      cnv.style('pointer-events', 'none');
       cnv.style('display', 'none');
       p.noLoop();
     };
@@ -63,62 +62,44 @@ function initOverlay() {
     p.draw = () => {
       p.clear();
       // ── ここにアニメーションを実装 ──
-      // 例: p.background(0, 0, 0, 100);
     };
 
     p.windowResized = () => {
       p.resizeCanvas(window.innerWidth, window.innerHeight);
     };
-  };
-
-  p5Instance = new p5(sketch);
+  });
 }
 
 function showOverlay() {
-  const cnv = document.getElementById('p5-overlay');
-  if (cnv) {
-    cnv.style.display = 'block';
-    if (p5Instance) p5Instance.loop();
-  }
+  const cnv = document.querySelector('#p5-overlay canvas, canvas.p5Canvas');
+  if (cnv) { cnv.style.display = 'block'; p5Instance && p5Instance.loop(); }
+  console.log('ターゲット検出');
 }
 
 function hideOverlay() {
-  const cnv = document.getElementById('p5-overlay');
-  if (cnv) {
-    cnv.style.display = 'none';
-    if (p5Instance) p5Instance.noLoop();
-  }
+  const cnv = document.querySelector('#p5-overlay canvas, canvas.p5Canvas');
+  if (cnv) { cnv.style.display = 'none'; p5Instance && p5Instance.noLoop(); }
+  console.log('ターゲット消失');
 }
 
-// ── タップハンドラ（patatap的インタラクション用） ──────────────────────────
+// ── タップ（patatap的インタラクション） ──────────────────────────────────────
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
-  // ── ここにタップ時のビジュアル変化を実装 ──
   console.log('タップ:', e.clientX, e.clientY);
+  // ── ここにビジュアル変化を実装 ──
 });
 
 // ── エラー表示 ────────────────────────────────────────────────────────────────
 function showError(msg) {
   const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;font-size:14px;padding:12px;z-index:9999;white-space:pre-wrap;word-break:break-all;';
+  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:#fff;font-size:14px;padding:12px;z-index:9999;white-space:pre-wrap;word-break:break-all;';
   div.textContent = msg;
   document.body.appendChild(div);
 }
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  if (typeof window.MINDAR === 'undefined') {
-    showError('MindAR が読み込まれていません。ネットワーク接続を確認してください。');
-    return;
-  }
-  if (typeof THREE === 'undefined') {
-    showError('Three.js が読み込まれていません。');
-    return;
-  }
-
-  initOverlay();
-  startAR().catch((err) => {
-    console.error('AR起動エラー:', err);
-    showError('AR起動エラー:\n' + (err && err.message ? err.message : String(err)));
-  });
+initOverlay();
+startAR().catch((err) => {
+  console.error(err);
+  showError('エラー: ' + (err.message || String(err)));
 });

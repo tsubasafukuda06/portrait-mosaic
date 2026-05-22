@@ -7,18 +7,20 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #ar-container { width: 100%; height: 100%; position: relative; }
+    #video {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
   </style>
 </head>
 <body>
-  <div id="ar-container"></div>
+  <video id="video" autoplay playsinline muted></video>
 
-  <!-- Three.js / MindAR ローカル配置 -->
-  <script src="three.min.js"></script>
-  <script src="mindar-image-three.prod.js"></script>
   <!-- p5.js (オーバーレイアニメーション用) -->
   <script src="p5.min.js"></script>
-  <!-- AR骨格 -->
-  <script src="ar.js"></script>
+  <!-- AR本体 (ES module: MindAR をCDNからimport) -->
+  <script type="module" src="ar.js"></script>
 </body>
 </html>
