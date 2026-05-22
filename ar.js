@@ -122,7 +122,20 @@ function redrawMosaic() {
       const d   = Math.max(Math.abs(cx_ - dynCX), Math.abs(cy_ - dynCY));
       const S   = ZONES.find(z => d < z[0])[1];
 
-      if (x % S !== 0 || y % S !== 0) continue;
+      if (x % S !== 0 || y % S !== 0) {
+        // ゾーン境界ギャップ補填：代表タイルが別ゾーンなら個別に描画
+        const tx  = Math.floor(x / S) * S;
+        const ty  = Math.floor(y / S) * S;
+        const td  = Math.max(Math.abs(tx + QR_MOD / 2 - dynCX),
+                             Math.abs(ty + QR_MOD / 2 - dynCY));
+        const tS  = ZONES.find(z => td < z[0])[1];
+        if (tS !== S) {
+          if (sampleBright(cx_, cy_) < THRESHOLD) {
+            faceCtx.fillRect(x, y, QR_MOD, QR_MOD);
+          }
+        }
+        continue;
+      }
 
       const tileCX = x + S / 2;
       const tileCY = y + S / 2;
