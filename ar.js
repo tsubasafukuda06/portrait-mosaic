@@ -218,16 +218,34 @@ function initOverlay() {
 }
 
 // ── キラキラ ──────────────────────────────────────────────────────────────────
-// faceCanvas座標 → スクリーン座標に変換（近似）
+// faceCanvas座標 → スクリーン座標（Three.js投影で正確に算出）
 function canvasToScreen(cx, cy) {
+  const target = document.getElementById('ar-target');
+  const camera = document.querySelector('a-camera');
+  if (!target || !camera) return null;
+
+  // canvas UV → a-plane上の3Dローカル座標（width=1, height=1.480, 中心が原点）
+  const u = cx / CANVAS_W;
+  const v = cy / CANVAS_H;
+  const localX =  (u - 0.5) * 1;
+  const localY = -(v - 0.5) * 1.480;  // Y軸反転
+
+  const vec = new THREE.Vector3(localX, localY, 0);
+  target.object3D.updateMatrixWorld();
+  vec.applyMatrix4(target.object3D.matrixWorld);
+
+  const cam = camera.getObject3D('camera');
+  vec.project(cam);
+
   return {
-    x: (cx / CANVAS_W) * window.innerWidth,
-    y: (cy / CANVAS_H) * window.innerHeight,
+    x:  (vec.x + 1) / 2 * window.innerWidth,
+    y: (-vec.y + 1) / 2 * window.innerHeight,
   };
 }
 
 function spawnSparkles() {
   const origin = canvasToScreen(WINK_EYE.x, WINK_EYE.y);
+  if (!origin) return;
   const count  = 14;
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 / count) * i + Math.random() * 0.25;
