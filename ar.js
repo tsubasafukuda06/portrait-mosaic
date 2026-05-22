@@ -37,14 +37,16 @@ const ZONE_TARGETS = [
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let isTracking = false;
-let audioCtx   = null;
-let faceCanvas = null;
-let faceCtx    = null;
-let srcPixels  = null;  // 読み込んだ画像のピクセルデータ
+let isTracking    = false;
+let audioCtx      = null;
+let faceCanvas    = null;
+let faceCtx       = null;
+let srcPixels     = null;
 let srcW = 0, srcH = 0;
-let texture    = null;
-let animFrame  = null;
+let texture       = null;   // CanvasTexture（静止モザイク）
+let videoTexture  = null;   // VideoTexture（ウィンク動画）
+let animFrame     = null;
+let isPlayingWink = false;
 
 // ゾーン中心（アニメーション用）
 let dynCX = ORIGIN_CX;
@@ -181,6 +183,38 @@ function getZone(x, y) {
   return Math.min(row, 2) * 3 + Math.min(col, 2);
 }
 
+// ── ウィンク動画再生 ──────────────────────────────────────────────────────────
+function playWink() {
+  if (isPlayingWink) return;
+  const vid = document.getElementById('wink-video');
+  if (!vid || !videoTexture) return;
+
+  isPlayingWink = true;
+  const mesh = document.getElementById('face-plane').getObject3D('mesh');
+  mesh.material.map = videoTexture;
+  mesh.material.needsUpdate = true;
+
+  vid.currentTime = 0;
+  vid.play();
+
+  function onEnded() {
+    vid.removeEventListener('ended', onEnded);
+    // 静止モザイクに戻す
+    mesh.material.map = texture;
+    mesh.material.needsUpdate = true;
+    isPlayingWink = false;
+  }
+  vid.addEventListener('ended', onEnded);
+
+  // VideoTextureは自動更新されないので毎フレームneedsUpdate
+  function tickVideo() {
+    if (!isPlayingWink) return;
+    videoTexture.needsUpdate = true;
+    requestAnimationFrame(tickVideo);
+  }
+  requestAnimationFrame(tickVideo);
+}
+
 // ── タップ ────────────────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
@@ -189,8 +223,14 @@ document.addEventListener('click', (e) => {
   const zone = getZone(e.clientX, e.clientY);
   playTone(ZONE_FREQ[zone]);
 
-  triggerAnim(zone);
-  ensureLoop();
+  if (zone === 5) {
+    // 中央右 → ウィンク動画
+    playWink();
+  } else {
+    // その他 → モザイクアニメーション
+    triggerAnim(zone);
+    ensureLoop();
+  }
 });
 
 // ── AR イベント ───────────────────────────────────────────────────────────────
@@ -252,9 +292,17 @@ function setTexture() {
   const mesh = plane.getObject3D('mesh');
   if (!mesh)  { requestAnimationFrame(setTexture); return; }
 
+  // 静止モザイク
   texture = new THREE.CanvasTexture(faceCanvas);
   mesh.material.map = texture;
   mesh.material.needsUpdate = true;
+
+  // ウィンク動画テクスチャ（再生前に準備）
+  const vid = document.getElementById('wink-video');
+  if (vid) {
+    videoTexture = new THREE.VideoTexture(vid);
+    videoTexture.minFilter = THREE.LinearFilter;
+  }
 }
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
