@@ -48,8 +48,12 @@ let animFrame     = null;
 let isPlayingWink = false;
 
 // キラキラ エフェクト
-const WINK_EYE = { x: 360, y: 355 };  // canvas座標（ウィンクしている目）
+const WINK_EYE = { x: 360, y: 355 };  // faceCanvas座標（ウィンクしている目）
 const sparkles  = [];
+
+// スクリーン空間のオーバーレイ（sparkle用）
+let overlayCanvas = null;
+let overlayCtx    = null;
 
 // ゾーン中心（アニメーション用）
 let dynCX = ORIGIN_CX;
@@ -199,62 +203,63 @@ function getZone(x, y) {
   return Math.min(row, 2) * 3 + Math.min(col, 2);
 }
 
+// ── オーバーレイ初期化 ────────────────────────────────────────────────────────
+function initOverlay() {
+  overlayCanvas               = document.createElement('canvas');
+  overlayCanvas.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:100;';
+  overlayCanvas.width         = window.innerWidth;
+  overlayCanvas.height        = window.innerHeight;
+  document.body.appendChild(overlayCanvas);
+  overlayCtx = overlayCanvas.getContext('2d');
+  window.addEventListener('resize', () => {
+    overlayCanvas.width  = window.innerWidth;
+    overlayCanvas.height = window.innerHeight;
+  });
+}
+
 // ── キラキラ ──────────────────────────────────────────────────────────────────
+// faceCanvas座標 → スクリーン座標に変換（近似）
+function canvasToScreen(cx, cy) {
+  return {
+    x: (cx / CANVAS_W) * window.innerWidth,
+    y: (cy / CANVAS_H) * window.innerHeight,
+  };
+}
+
 function spawnSparkles() {
-  const count = 10;
+  const origin = canvasToScreen(WINK_EYE.x, WINK_EYE.y);
+  const count  = 14;
   for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
-    const speed = 1.5 + Math.random() * 2.5;
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.25;
+    const speed = 4 + Math.random() * 6;
+    // ドットサイズはモザイクタイルに合わせて5の倍数
+    const size  = [5, 10, 10, 15][Math.floor(Math.random() * 4)];
     sparkles.push({
-      x: WINK_EYE.x + (Math.random() - 0.5) * 20,
-      y: WINK_EYE.y + (Math.random() - 0.5) * 10,
+      x:  origin.x + (Math.random() - 0.5) * 20,
+      y:  origin.y + (Math.random() - 0.5) * 10,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      size: 6 + Math.random() * 8,
+      size,
       alpha: 1,
-      rot: Math.random() * Math.PI,
     });
   }
 }
 
 function drawSparkles() {
-  faceCtx.save();
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const s = sparkles[i];
     s.x    += s.vx;
     s.y    += s.vy;
-    s.alpha -= 0.028;
-    s.rot  += 0.08;
+    s.vy   += 0.15;   // 重力
+    s.alpha -= 0.025;
     if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
 
-    faceCtx.globalAlpha = s.alpha;
-    faceCtx.save();
-    faceCtx.translate(s.x, s.y);
-    faceCtx.rotate(s.rot);
-
-    // 4方向の線（十字 × 45度ずつ＝8芒星）
-    faceCtx.strokeStyle = '#ffffff';
-    faceCtx.lineWidth   = 2;
-    faceCtx.beginPath();
-    for (let d = 0; d < 4; d++) {
-      const a = (Math.PI / 4) * d;
-      faceCtx.moveTo(Math.cos(a) * s.size * 0.2, Math.sin(a) * s.size * 0.2);
-      faceCtx.lineTo(Math.cos(a) * s.size,       Math.sin(a) * s.size);
-      faceCtx.moveTo(Math.cos(a + Math.PI) * s.size * 0.2, Math.sin(a + Math.PI) * s.size * 0.2);
-      faceCtx.lineTo(Math.cos(a + Math.PI) * s.size,       Math.sin(a + Math.PI) * s.size);
-    }
-    faceCtx.stroke();
-
-    // 中心の小さい点
-    faceCtx.fillStyle = '#ffffff';
-    faceCtx.beginPath();
-    faceCtx.arc(0, 0, 2, 0, Math.PI * 2);
-    faceCtx.fill();
-
-    faceCtx.restore();
+    overlayCtx.globalAlpha = s.alpha;
+    overlayCtx.fillStyle   = '#FFD700';  // 黄色
+    overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
-  faceCtx.globalAlpha = 1;
-  faceCtx.restore();
+  overlayCtx.globalAlpha = 1;
 }
 
 // ── ウィンク動画再生 ──────────────────────────────────────────────────────────
@@ -273,17 +278,17 @@ function playWink() {
   function tickVideo() {
     if (!isPlayingWink) return;
     faceCtx.drawImage(vid, 0, 0, CANVAS_W, CANVAS_H);
-    if (sparkles.length > 0) drawSparkles();
     if (texture) texture.needsUpdate = true;
+    drawSparkles();  // オーバーレイに描画（表示外にも飛び出す）
     requestAnimationFrame(tickVideo);
   }
 
   function onEnded() {
     vid.removeEventListener('ended', onEnded);
     isPlayingWink = false;
-    // 静止モザイクに戻す
     redrawMosaic();
     if (texture) texture.needsUpdate = true;
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
   }
 
   vid.addEventListener('ended', onEnded);
@@ -375,6 +380,7 @@ function setTexture() {
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
 initFaceCanvas();
+initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-screen').style.display = 'none';
