@@ -97,10 +97,28 @@ document.addEventListener('click', (e) => {
   console.log('タップ:', e.clientX, e.clientY);
 });
 
+// ── エラー表示 ────────────────────────────────────────────────────────────────
+function showError(msg) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;font-size:14px;padding:12px;z-index:9999;white-space:pre-wrap;word-break:break-all;';
+  div.textContent = msg;
+  document.body.appendChild(div);
+}
+
 // ── 起動 ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.MINDAR === 'undefined') {
+    showError('MindAR が読み込まれていません。ネットワーク接続を確認してください。');
+    return;
+  }
+  if (typeof THREE === 'undefined') {
+    showError('Three.js が読み込まれていません。');
+    return;
+  }
+
   initOverlay();
   startAR().catch((err) => {
     console.error('AR起動エラー:', err);
+    showError('AR起動エラー:\n' + (err && err.message ? err.message : String(err)));
   });
 });
