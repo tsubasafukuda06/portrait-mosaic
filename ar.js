@@ -281,36 +281,38 @@ function drawSparkles() {
 }
 
 // ── ウィンク動画再生 ──────────────────────────────────────────────────────────
+let winkTicking = false;
+
 function playWink() {
-  if (isPlayingWink) return;
   const vid = document.getElementById('wink-video');
   if (!vid) return;
 
-  isPlayingWink = true;
+  // 連打: 動画を先頭から再スタート、sparkleを追加スポーン
+  vid.onended = null;
   vid.currentTime = 0;
   vid.play();
+  isPlayingWink = true;
 
-  // 0.4秒後にキラキラ発生（目が閉じるタイミング）
   setTimeout(spawnSparkles, 400);
 
-  function tickVideo() {
-    if (!isPlayingWink) return;
-    faceCtx.drawImage(vid, 0, 0, CANVAS_W, CANVAS_H);
-    if (texture) texture.needsUpdate = true;
-    drawSparkles();  // オーバーレイに描画（表示外にも飛び出す）
-    requestAnimationFrame(tickVideo);
+  // tickループは1本だけ維持
+  if (!winkTicking) {
+    winkTicking = true;
+    (function tick() {
+      if (!isPlayingWink) { winkTicking = false; return; }
+      faceCtx.drawImage(vid, 0, 0, CANVAS_W, CANVAS_H);
+      if (texture) texture.needsUpdate = true;
+      drawSparkles();
+      requestAnimationFrame(tick);
+    })();
   }
 
-  function onEnded() {
-    vid.removeEventListener('ended', onEnded);
+  vid.onended = () => {
     isPlayingWink = false;
     redrawMosaic();
     if (texture) texture.needsUpdate = true;
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-  }
-
-  vid.addEventListener('ended', onEnded);
-  requestAnimationFrame(tickVideo);
+  };
 }
 
 // ── タップ ────────────────────────────────────────────────────────────────────
