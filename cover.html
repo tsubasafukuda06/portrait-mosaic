@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Cover Design</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #222; display: flex; flex-direction: row; align-items: flex-start; gap: 24px; padding: 24px; }
+    canvas { display: block; flex-shrink: 0; }
+    #controls { display: none; }
+    #controls label { font-family: monospace; font-size: 11px; color: #aaa; display: block; margin-bottom: 4px; }
+    #controls input[type=range] { width: 180px; display: block; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div><label>Zone1境界 (5px→10px): <span id="v0">178</span>px</label><input type="range" min="50" max="500" value="178" id="s0"></div>
+    <div><label>Zone2境界 (10px→20px): <span id="v1">277</span>px</label><input type="range" min="50" max="500" value="277" id="s1"></div>
+    <div><label>Zone3境界 (20px→30px): <span id="v2">355</span>px</label><input type="range" min="50" max="500" value="355" id="s2"></div>
+    <div><label>Zone4境界 (30px→30px): <span id="v3">459</span>px</label><input type="range" min="50" max="500" value="459" id="s3"></div>
+  </div>
+  <script src="p5.min.js"></script>
+  <script src="cover.js"></script>
+</body>
+</html>
