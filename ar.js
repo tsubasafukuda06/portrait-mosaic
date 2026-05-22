@@ -52,14 +52,9 @@ async function startAR() {
   });
 
   const dbg = document.getElementById('debug');
-  if (dbg) dbg.textContent = 'ターゲット読込中...';
+  if (dbg) dbg.textContent = '🔍 表紙を探しています...';
 
-  let targetCount = 0;
-  await new Promise((resolve) => {
-    targetCount = controller.addImageTargetsFromBuffer(buffer, resolve);
-  });
-
-  if (dbg) dbg.textContent = `🔍 探索中 (targets: ${targetCount ?? '?'})`;
+  controller.addImageTargetsFromBuffer(buffer);
   controller.processVideo(video);
 }
 
