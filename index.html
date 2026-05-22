@@ -45,6 +45,12 @@
       cursor: pointer;
       letter-spacing: 0.1em;
     }
+    a-scene {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
     #debug {
       position: fixed;
       bottom: 24px;
@@ -72,6 +78,7 @@
 
   <!-- A-Frame シーン -->
   <a-scene
+    embedded
     mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; warmupTolerance: 0; missTolerance: 0;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false"
