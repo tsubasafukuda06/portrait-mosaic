@@ -42,7 +42,7 @@ async function startAR() {
     },
   });
 
-  controller.addImageTargets([buffer]);
+  await controller.addImageTargetsFromBuffer(buffer);
   controller.processVideo(video);
 }
 
