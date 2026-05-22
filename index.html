@@ -92,29 +92,8 @@
   <div id="debug"></div>
 
   <!-- ライブラリ（IIFE形式、順番重要） -->
-  <script>
-    window.onerror = function(msg, src, line, col, err) {
-      const div = document.createElement('div');
-      div.style.cssText = 'position:fixed;bottom:60px;left:0;width:100%;background:orange;color:#000;font-size:12px;padding:8px;z-index:9999;white-space:pre-wrap;word-break:break-all;';
-      div.textContent = 'JS ERROR: ' + msg + '\n' + src + ':' + line;
-      document.body.appendChild(div);
-    };
-  </script>
-  <script src="aframe.min.js"></script>
-  <script>
-    const _aframeOK = typeof AFRAME !== 'undefined';
-    document.addEventListener('DOMContentLoaded', () => {
-      const d = document.getElementById('debug');
-      if(d) d.textContent = 'AFRAME=' + _aframeOK + ' mindar-comp=' + !!(AFRAME && AFRAME.components && AFRAME.components['mindar-image']);
-    });
-  </script>
-  <script src="mindar-image-aframe.prod.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const d = document.getElementById('debug');
-      if(d) d.textContent += ' | after-mindar: comp=' + !!(AFRAME && AFRAME.components && AFRAME.components['mindar-image']) + ' sys=' + !!(AFRAME && AFRAME.systems && AFRAME.systems['mindar-image-system']);
-    });
-  </script>
+  <script src="aframe.min.js?v=141"></script>
+  <script src="mindar-image-aframe.prod.js?v=125"></script>
   <!-- p5.js -->
   <script src="p5.min.js"></script>
   <!-- AR制御 -->
