@@ -74,9 +74,11 @@ let diagCount = 0;
 const diagTimer = setInterval(() => {
   const sceneEl = document.querySelector('a-scene');
   if (!sceneEl) return;
-  const sys = Object.keys(sceneEl.systems || {}).slice(0,3).join(',');
-  const comp = sceneEl.components ? Object.keys(sceneEl.components).slice(0,3).join(',') : '-';
-  setDebug(`t=${diagCount} loaded=${sceneEl.hasLoaded} sys=[${sys}] comp=[${comp}]`);
+  const af = typeof AFRAME !== 'undefined' ? AFRAME : null;
+  const gComp = af && af.components ? (af.components['mindar-image'] ? 'YES' : 'no') : 'no-AF';
+  const gSys = af && af.systems ? (af.systems['mindar-image-system'] ? 'YES' : 'no') : 'no-AF';
+  const sSys = sceneEl.systems && sceneEl.systems['mindar-image-system'] ? 'YES' : 'no';
+  setDebug(`t=${diagCount} gComp=${gComp} gSys=${gSys} sceneSys=${sSys} loaded=${sceneEl.hasLoaded}`);
   diagCount++;
   if (diagCount > 60) clearInterval(diagTimer);
 }, 500);

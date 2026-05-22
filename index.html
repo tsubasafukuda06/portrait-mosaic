@@ -93,7 +93,8 @@
 
   <!-- ライブラリ（CDN） -->
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"
+    onerror="document.getElementById('debug').textContent='CDN mindar LOAD FAILED'"></script>
   <!-- p5.js -->
   <script src="p5.min.js"></script>
   <!-- AR制御 -->
