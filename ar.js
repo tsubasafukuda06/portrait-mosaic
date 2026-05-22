@@ -18,6 +18,7 @@ function initOverlay() {
     };
     p.draw = () => {
       p.clear();
+      // ── アニメーションをここに実装 ──
     };
     p.windowResized = () => {
       p.resizeCanvas(window.innerWidth, window.innerHeight);
@@ -54,6 +55,7 @@ function setupAREvents() {
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
   console.log('タップ:', e.clientX, e.clientY);
+  // ── patatap的エフェクトをここに実装 ──
 });
 
 // ── ユーティリティ ────────────────────────────────────────────────────────────
@@ -69,52 +71,27 @@ function showError(msg) {
   document.body.appendChild(div);
 }
 
-// ── ページロード時から状態を監視 ──────────────────────────────────────────────
-let diagCount = 0;
-const diagTimer = setInterval(() => {
-  const sceneEl = document.querySelector('a-scene');
-  if (!sceneEl) return;
-  const af = typeof AFRAME !== 'undefined' ? AFRAME : null;
-  const gComp = af && af.components ? (af.components['mindar-image'] ? 'YES' : 'no') : 'no-AF';
-  const gSys = af && af.systems ? (af.systems['mindar-image-system'] ? 'YES' : 'no') : 'no-AF';
-  const sSys = sceneEl.systems && sceneEl.systems['mindar-image-system'] ? 'YES' : 'no';
-  setDebug(`t=${diagCount} gComp=${gComp} gSys=${gSys} sceneSys=${sSys} loaded=${sceneEl.hasLoaded}`);
-  diagCount++;
-  if (diagCount > 60) clearInterval(diagTimer);
-}, 500);
-
 // ── 起動 ─────────────────────────────────────────────────────────────────────
 initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', async () => {
-  clearInterval(diagTimer);
   document.getElementById('start-screen').style.display = 'none';
-  setDebug('⏳ 起動中...');
+  setDebug('🔍 表紙を探しています...');
 
   const sceneEl = document.querySelector('a-scene');
 
-  // systemが利用可能になるまでポーリング（最大15秒）
-  let arSystem = null;
-  for (let i = 0; i < 75; i++) {
-    arSystem = sceneEl.systems && sceneEl.systems['mindar-image-system'];
-    if (arSystem) break;
-    setDebug('⏳ 起動中... ' + i + ' loaded=' + sceneEl.hasLoaded);
-    await new Promise(r => setTimeout(r, 200));
+  // sceneEl の loaded を待つ
+  if (!sceneEl.hasLoaded) {
+    await new Promise(resolve => sceneEl.addEventListener('loaded', resolve, { once: true }));
   }
 
-  if (!arSystem) {
-    const comp = sceneEl.components ? Object.keys(sceneEl.components).join(',') : 'none';
-    const sys = sceneEl.systems ? Object.keys(sceneEl.systems).join(',') : 'none';
-    showError('MindARシステムが見つかりません\nloaded=' + sceneEl.hasLoaded + '\ncomp=' + comp + '\nsys=' + sys);
-    return;
-  }
+  const arSystem = sceneEl.systems['mindar-image-system'];
+  if (!arSystem) { showError('MindARシステムが見つかりません'); return; }
 
-  setDebug('⏳ カメラ起動中...');
   try {
     setupAREvents();
     arSystem.start();
-    setDebug('🔍 表紙を探しています...');
   } catch (err) {
-    showError('startエラー: ' + (err.message || String(err)));
+    showError('ARエラー: ' + (err.message || String(err)));
   }
 });
