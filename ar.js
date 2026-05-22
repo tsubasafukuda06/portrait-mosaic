@@ -43,8 +43,7 @@ let faceCanvas    = null;
 let faceCtx       = null;
 let srcPixels     = null;
 let srcW = 0, srcH = 0;
-let texture       = null;   // CanvasTexture（静止モザイク）
-let videoTexture  = null;   // VideoTexture（ウィンク動画）
+let texture       = null;   // CanvasTexture（常にこれ一本）
 let animFrame     = null;
 let isPlayingWink = false;
 
@@ -187,31 +186,29 @@ function getZone(x, y) {
 function playWink() {
   if (isPlayingWink) return;
   const vid = document.getElementById('wink-video');
-  if (!vid || !videoTexture) return;
+  if (!vid) return;
 
   isPlayingWink = true;
-  const mesh = document.getElementById('face-plane').getObject3D('mesh');
-  mesh.material.map = videoTexture;
-  mesh.material.needsUpdate = true;
-
   vid.currentTime = 0;
   vid.play();
 
-  function onEnded() {
-    vid.removeEventListener('ended', onEnded);
-    // 静止モザイクに戻す
-    mesh.material.map = texture;
-    mesh.material.needsUpdate = true;
-    isPlayingWink = false;
-  }
-  vid.addEventListener('ended', onEnded);
-
-  // VideoTextureは自動更新されないので毎フレームneedsUpdate
   function tickVideo() {
     if (!isPlayingWink) return;
-    videoTexture.needsUpdate = true;
+    // 動画フレームをそのままfaceCanvasに描画（CanvasTexture一本化）
+    faceCtx.drawImage(vid, 0, 0, CANVAS_W, CANVAS_H);
+    if (texture) texture.needsUpdate = true;
     requestAnimationFrame(tickVideo);
   }
+
+  function onEnded() {
+    vid.removeEventListener('ended', onEnded);
+    isPlayingWink = false;
+    // 静止モザイクに戻す
+    redrawMosaic();
+    if (texture) texture.needsUpdate = true;
+  }
+
+  vid.addEventListener('ended', onEnded);
   requestAnimationFrame(tickVideo);
 }
 
@@ -292,17 +289,10 @@ function setTexture() {
   const mesh = plane.getObject3D('mesh');
   if (!mesh)  { requestAnimationFrame(setTexture); return; }
 
-  // 静止モザイク
+  // CanvasTexture一本のみ
   texture = new THREE.CanvasTexture(faceCanvas);
   mesh.material.map = texture;
   mesh.material.needsUpdate = true;
-
-  // ウィンク動画テクスチャ（再生前に準備）
-  const vid = document.getElementById('wink-video');
-  if (vid) {
-    videoTexture = new THREE.VideoTexture(vid);
-    videoTexture.minFilter = THREE.LinearFilter;
-  }
 }
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
