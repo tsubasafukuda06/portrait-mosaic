@@ -1,6 +1,6 @@
 'use strict';
 
-// ── Mosaic config (cover.js と同じ値) ────────────────────────────────────────
+// ── Mosaic config ─────────────────────────────────────────────────────────────
 const FG        = [59, 138, 222];
 const BG        = [255, 255, 255];
 const QR_MOD    = 5;
@@ -9,9 +9,7 @@ const THRESHOLD = 120;
 const CANVAS_W = 600;
 const CANVAS_H = 888;
 
-const QR_CX = CANVAS_W * 0.50;
-const QR_CY = CANVAS_H * 0.40;
-
+// ゾーン境界（カバー.jsと同じ値）
 const ZONES = [
   [178, QR_MOD    ],
   [277, QR_MOD * 2],
@@ -20,86 +18,121 @@ const ZONES = [
   [Infinity, QR_MOD * 6],
 ];
 
+// ゾーン中心の初期位置
+const ORIGIN_CX = CANVAS_W * 0.50;
+const ORIGIN_CY = CANVAS_H * 0.40;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let isTracking = false;
 let audioCtx   = null;
 let faceCanvas = null;
 let faceCtx    = null;
+let srcPixels  = null;  // 読み込んだ画像のピクセルデータ
+let srcW = 0, srcH = 0;
 let texture    = null;
 let animFrame  = null;
 
-// ── パーティクル ───────────────────────────────────────────────────────────────
-const particles = [];
+// ゾーン中心（アニメーション用）
+let dynCX = ORIGIN_CX;
+let dynCY = ORIGIN_CY;
 
-let overlayCanvas = null;
-let overlayCtx    = null;
+// アニメーション
+let animPhase    = 'idle';   // 'out' | 'back'
+let animT        = 0;
+let animFromCX   = ORIGIN_CX;
+let animFromCY   = ORIGIN_CY;
+let animToCX     = ORIGIN_CX;
+let animToCY     = ORIGIN_CY;
 
-function initOverlay() {
-  overlayCanvas               = document.createElement('canvas');
-  overlayCanvas.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:100;';
-  overlayCanvas.width         = window.innerWidth;
-  overlayCanvas.height        = window.innerHeight;
-  document.body.appendChild(overlayCanvas);
-  overlayCtx = overlayCanvas.getContext('2d');
+// ── イージング ────────────────────────────────────────────────────────────────
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+function lerp(a, b, t) { return a + (b - a) * t; }
 
-  window.addEventListener('resize', () => {
-    overlayCanvas.width  = window.innerWidth;
-    overlayCanvas.height = window.innerHeight;
-  });
+// ── ゾーン中心アニメーション トリガー ─────────────────────────────────────────
+function triggerAnim(screenX, screenY) {
+  // スクリーン座標 → canvas座標
+  animToCX  = (screenX / window.innerWidth)  * CANVAS_W;
+  animToCY  = (screenY / window.innerHeight) * CANVAS_H;
+  animFromCX = dynCX;
+  animFromCY = dynCY;
+  animPhase  = 'out';
+  animT      = 0;
 }
 
-// タップ地点のキャンバス座標でモザイク色をサンプリング
-function sampleMosaicColor(screenX, screenY) {
-  const cx = (screenX / window.innerWidth)  * CANVAS_W;
-  const cy = (screenY / window.innerHeight) * CANVAS_H;
-  const px = faceCtx.getImageData(Math.round(cx), Math.round(cy), 1, 1).data;
-  return [px[0], px[1], px[2]];
+function updateAnim() {
+  if (animPhase === 'idle') return false;
+
+  animT = Math.min(animT + 0.05, 1);
+
+  if (animPhase === 'out') {
+    dynCX = lerp(animFromCX, animToCX, easeInOut(animT));
+    dynCY = lerp(animFromCY, animToCY, easeInOut(animT));
+    if (animT >= 1) { animT = 0; animPhase = 'back'; }
+  } else {
+    dynCX = lerp(animToCX, ORIGIN_CX, easeInOut(animT));
+    dynCY = lerp(animToCY, ORIGIN_CY, easeInOut(animT));
+    if (animT >= 1) {
+      dynCX = ORIGIN_CX;
+      dynCY = ORIGIN_CY;
+      animPhase = 'idle';
+      return false;
+    }
+  }
+  return true;
 }
 
-// ピクセル散乱エフェクトをスポーン
-function spawnPixels(screenX, screenY) {
-  const count = 18;
-  for (let i = 0; i < count; i++) {
-    // タップ周辺の少しずつ違う点からサンプリング
-    const jx = screenX + (Math.random() - 0.5) * 60;
-    const jy = screenY + (Math.random() - 0.5) * 60;
-    const color = sampleMosaicColor(
-      Math.max(0, Math.min(window.innerWidth  - 1, jx)),
-      Math.max(0, Math.min(window.innerHeight - 1, jy))
-    );
+// ── モザイク描画（動的中心対応）─────────────────────────────────────────────
+function sampleBright(cx, cy) {
+  const ix = Math.min(Math.max(Math.floor(cx / CANVAS_W * (srcW - 1)), 0), srcW - 1);
+  const iy = Math.min(Math.max(Math.floor(cy / CANVAS_H * (srcH - 1)), 0), srcH - 1);
+  const p  = (iy * srcW + ix) * 4;
+  return srcPixels[p] * 0.299 + srcPixels[p + 1] * 0.587 + srcPixels[p + 2] * 0.114;
+}
 
-    // タップ地点から外向きにランダムな速度
-    const angle  = Math.random() * Math.PI * 2;
-    const speed  = 4 + Math.random() * 8;
-    const size   = 5 + Math.floor(Math.random() * 3) * 5;  // 5, 10, 15px
+function redrawMosaic() {
+  faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
+  faceCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    particles.push({
-      x:     jx,
-      y:     jy,
-      vx:    Math.cos(angle) * speed,
-      vy:    Math.sin(angle) * speed - 2,  // 少し上向きバイアス
-      size,
-      color,
-      alpha: 1,
-    });
+  const cols = Math.ceil(CANVAS_W / QR_MOD);
+  const rows = Math.ceil(CANVAS_H / QR_MOD);
+
+  faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x   = c * QR_MOD;
+      const y   = r * QR_MOD;
+      const cx_ = x + QR_MOD / 2;
+      const cy_ = y + QR_MOD / 2;
+      const d   = Math.max(Math.abs(cx_ - dynCX), Math.abs(cy_ - dynCY));
+      const S   = ZONES.find(z => d < z[0])[1];
+
+      if (x % S !== 0 || y % S !== 0) continue;
+
+      const tileCX = x + S / 2;
+      const tileCY = y + S / 2;
+
+      if (sampleBright(tileCX, tileCY) < THRESHOLD) {
+        faceCtx.fillRect(x, y, S, S);
+      }
+    }
   }
 }
 
-function updateParticles() {
-  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x    += p.vx;
-    p.y    += p.vy;
-    p.vy   += 0.4;          // 重力
-    p.alpha -= 0.025;
-    if (p.alpha <= 0) { particles.splice(i, 1); continue; }
-
-    overlayCtx.globalAlpha = p.alpha;
-    overlayCtx.fillStyle   = `rgb(${p.color[0]},${p.color[1]},${p.color[2]})`;
-    overlayCtx.fillRect(p.x, p.y, p.size, p.size);
+// ── アニメーションループ ───────────────────────────────────────────────────────
+function animLoop() {
+  const running = updateAnim();
+  if (running) {
+    redrawMosaic();
+    if (texture) texture.needsUpdate = true;
+    animFrame = requestAnimationFrame(animLoop);
+  } else {
+    animFrame = null;
   }
-  overlayCtx.globalAlpha = 1;
+}
+
+function ensureLoop() {
+  if (!animFrame) animFrame = requestAnimationFrame(animLoop);
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
@@ -127,58 +160,6 @@ function playTone(freq) {
   osc.stop(audioCtx.currentTime + 0.6);
 }
 
-// ── Mosaic 描画 ───────────────────────────────────────────────────────────────
-function drawMosaic(pixels, imgW, imgH) {
-  faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
-  faceCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-  function sampleBright(cx, cy) {
-    const ix = Math.min(Math.max(Math.floor(cx / CANVAS_W * (imgW - 1)), 0), imgW - 1);
-    const iy = Math.min(Math.max(Math.floor(cy / CANVAS_H * (imgH - 1)), 0), imgH - 1);
-    const p  = (iy * imgW + ix) * 4;
-    return pixels[p] * 0.299 + pixels[p + 1] * 0.587 + pixels[p + 2] * 0.114;
-  }
-
-  const cols = Math.ceil(CANVAS_W / QR_MOD);
-  const rows = Math.ceil(CANVAS_H / QR_MOD);
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = c * QR_MOD;
-      const y = r * QR_MOD;
-
-      const cx_ = x + QR_MOD / 2;
-      const cy_ = y + QR_MOD / 2;
-      const d   = Math.max(Math.abs(cx_ - QR_CX), Math.abs(cy_ - QR_CY));
-      const S   = ZONES.find(z => d < z[0])[1];
-
-      if (x % S !== 0 || y % S !== 0) continue;
-
-      const tileCX = x + S / 2;
-      const tileCY = y + S / 2;
-
-      if (sampleBright(tileCX, tileCY) < THRESHOLD) {
-        faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
-        faceCtx.fillRect(x, y, S, S);
-      }
-    }
-  }
-}
-
-// ── アニメーションループ ───────────────────────────────────────────────────────
-function animLoop() {
-  updateParticles();
-  if (isTracking || particles.length > 0) {
-    animFrame = requestAnimationFrame(animLoop);
-  } else {
-    animFrame = null;
-  }
-}
-
-function ensureLoop() {
-  if (!animFrame) animFrame = requestAnimationFrame(animLoop);
-}
-
 // ── ゾーン判定 ────────────────────────────────────────────────────────────────
 function getZone(x, y) {
   const col = Math.floor(x / window.innerWidth  * 3);
@@ -194,7 +175,7 @@ document.addEventListener('click', (e) => {
   const zone = getZone(e.clientX, e.clientY);
   playTone(ZONE_FREQ[zone]);
 
-  spawnPixels(e.clientX, e.clientY);
+  triggerAnim(e.clientX, e.clientY);
   ensureLoop();
 });
 
@@ -204,7 +185,6 @@ function setupAREvents() {
   target.addEventListener('targetFound', () => {
     isTracking = true;
     setDebug('✅ 表紙を認識中');
-    ensureLoop();
   });
   target.addEventListener('targetLost', () => {
     isTracking = false;
@@ -225,7 +205,7 @@ function showError(msg) {
   document.body.appendChild(div);
 }
 
-// ── オフスクリーンcanvas + 画像読み込み ─────────────────────────────────────
+// ── 初期モザイク描画 ──────────────────────────────────────────────────────────
 function initFaceCanvas() {
   faceCanvas        = document.createElement('canvas');
   faceCanvas.width  = CANVAS_W;
@@ -242,8 +222,11 @@ function initFaceCanvas() {
     tmp.height   = img.naturalHeight;
     const tmpCtx = tmp.getContext('2d');
     tmpCtx.drawImage(img, 0, 0);
-    const { data } = tmpCtx.getImageData(0, 0, tmp.width, tmp.height);
-    drawMosaic(data, tmp.width, tmp.height);
+    const id = tmpCtx.getImageData(0, 0, tmp.width, tmp.height);
+    srcPixels = id.data;
+    srcW      = tmp.width;
+    srcH      = tmp.height;
+    redrawMosaic();  // 初期描画
   };
   img.onerror = () => showError('reference/face_up.jpg の読み込みに失敗しました');
   img.src = 'reference/face_up.jpg';
@@ -252,7 +235,6 @@ function initFaceCanvas() {
 function setTexture() {
   const plane = document.getElementById('face-plane');
   if (!plane) { requestAnimationFrame(setTexture); return; }
-
   const mesh = plane.getObject3D('mesh');
   if (!mesh)  { requestAnimationFrame(setTexture); return; }
 
@@ -263,7 +245,6 @@ function setTexture() {
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
 initFaceCanvas();
-initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-screen').style.display = 'none';
