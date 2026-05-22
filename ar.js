@@ -287,13 +287,13 @@ function playWink() {
   const vid = document.getElementById('wink-video');
   if (!vid) return;
 
-  // 連打: 動画を先頭から再スタート、sparkleを追加スポーン
+  // 連打: 0.4秒地点から再スタート、sparkleを即スポーン
   vid.onended = null;
-  vid.currentTime = 0;
+  vid.currentTime = 0.4;
   vid.play();
   isPlayingWink = true;
 
-  setTimeout(spawnSparkles, 400);
+  spawnSparkles();
 
   // tickループは1本だけ維持
   if (!winkTicking) {
