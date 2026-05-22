@@ -1,64 +1,7 @@
 'use strict';
 
-import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js';
-
-let controller  = null;
-let isTracking  = false;
-let p5Instance  = null;
-let frameCount  = 0;
-
-// ── カメラ起動 ────────────────────────────────────────────────────────────────
-async function startCamera() {
-  const video = document.getElementById('video');
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
-    audio: false,
-  });
-  video.srcObject = stream;
-  await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
-  await video.play();
-  return video;
-}
-
-// ── AR起動 ────────────────────────────────────────────────────────────────────
-async function startAR() {
-  const video = await startCamera();
-  setDebug('カメラ起動 ✅');
-
-  const response = await fetch('targets.mind');
-  if (!response.ok) throw new Error('targets.mind が見つかりません');
-  const buffer = await response.arrayBuffer();
-
-  controller = new window.MINDAR.IMAGE.Controller({
-    inputWidth:  video.videoWidth,
-    inputHeight: video.videoHeight,
-    maxTrack: 1,
-    onUpdate: ({ type, targetIndex, worldMatrix }) => {
-      if (type === 'processDone') {
-        frameCount++;
-        setDebug(`🔍 探索中 (${frameCount}フレーム処理済)`);
-        return;
-      }
-      if (type === 'updateMatrix') {
-        if (worldMatrix !== null) {
-          if (!isTracking) {
-            isTracking = true;
-            showOverlay();
-            setDebug('✅ 表紙を認識中');
-          }
-        } else {
-          if (isTracking) {
-            isTracking = false;
-            hideOverlay();
-          }
-        }
-      }
-    },
-  });
-
-  controller.addImageTargetsFromBuffer(buffer);
-  controller.processVideo(video);
-}
+let isTracking = false;
+let p5Instance = null;
 
 // ── p5.js オーバーレイ ────────────────────────────────────────────────────────
 function initOverlay() {
@@ -70,6 +13,7 @@ function initOverlay() {
       cnv.style('left', '0');
       cnv.style('pointer-events', 'none');
       cnv.style('display', 'none');
+      cnv.style('z-index', '100');
       p.noLoop();
     };
     p.draw = () => {
@@ -92,10 +36,26 @@ function hideOverlay() {
   if (cnv) { cnv.style.display = 'none'; p5Instance && p5Instance.noLoop(); }
 }
 
+// ── ターゲット イベント ────────────────────────────────────────────────────────
+function setupAREvents() {
+  const target = document.getElementById('ar-target');
+  target.addEventListener('targetFound', () => {
+    isTracking = true;
+    showOverlay();
+    setDebug('✅ 表紙を認識中');
+  });
+  target.addEventListener('targetLost', () => {
+    isTracking = false;
+    hideOverlay();
+    setDebug('🔍 表紙を探しています...');
+  });
+}
+
 // ── タップ ────────────────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
   console.log('タップ:', e.clientX, e.clientY);
+  // ── patatap的エフェクトをここに実装 ──
 });
 
 // ── ユーティリティ ────────────────────────────────────────────────────────────
@@ -116,8 +76,23 @@ initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   document.getElementById('start-screen').style.display = 'none';
-  startAR().catch((err) => {
-    console.error(err);
-    showError('エラー: ' + (err.message || String(err)));
-  });
+  setDebug('🔍 表紙を探しています...');
+
+  const sceneEl = document.querySelector('a-scene');
+
+  const doStart = () => {
+    try {
+      setupAREvents();
+      sceneEl.components['mindar-image'].startAR();
+    } catch (err) {
+      showError('エラー: ' + (err.message || String(err)));
+    }
+  };
+
+  // A-Frameのロードを待つ
+  if (sceneEl.hasLoaded) {
+    doStart();
+  } else {
+    sceneEl.addEventListener('loaded', doStart, { once: true });
+  }
 });
