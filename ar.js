@@ -74,30 +74,32 @@ function showError(msg) {
 // ── 起動 ─────────────────────────────────────────────────────────────────────
 initOverlay();
 
-document.getElementById('start-btn').addEventListener('click', () => {
+document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-screen').style.display = 'none';
-  setDebug('⏳ 初期化中...');
+  setDebug('⏳ 起動中...');
 
   const sceneEl = document.querySelector('a-scene');
 
-  const doStart = async () => {
-    setDebug('⏳ AR起動中...');
-    try {
-      setupAREvents();
-      const mindar = sceneEl.components['mindar-image'];
-      if (!mindar) { showError('MindARコンポーネントが見つかりません'); return; }
-      await mindar.startAR();
-      setDebug('🔍 表紙を探しています...');
-    } catch (err) {
-      showError('startARエラー: ' + (err.message || String(err)));
-    }
-  };
+  // MindARコンポーネントが利用可能になるまでポーリング（最大10秒）
+  let mindar = null;
+  for (let i = 0; i < 50; i++) {
+    mindar = sceneEl.components && sceneEl.components['mindar-image'];
+    if (mindar) break;
+    setDebug('⏳ 起動中... ' + i);
+    await new Promise(r => setTimeout(r, 200));
+  }
 
-  // A-Frameのロードを待つ
-  if (sceneEl.hasLoaded) {
-    doStart();
-  } else {
-    setDebug('⏳ シーン読み込み中...');
-    sceneEl.addEventListener('loaded', doStart, { once: true });
+  if (!mindar) {
+    showError('MindARコンポーネントが見つかりません\nscene.hasLoaded=' + sceneEl.hasLoaded);
+    return;
+  }
+
+  setDebug('⏳ カメラ起動中...');
+  try {
+    setupAREvents();
+    await mindar.startAR();
+    setDebug('🔍 表紙を探しています...');
+  } catch (err) {
+    showError('startARエラー: ' + (err.message || String(err)));
   }
 });
