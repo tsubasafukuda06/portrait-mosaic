@@ -58,6 +58,17 @@
       cursor: pointer;
       letter-spacing: 0.1em;
     }
+    #debug {
+      position: fixed;
+      bottom: 24px;
+      left: 0; right: 0;
+      text-align: center;
+      font-family: monospace;
+      font-size: 15px;
+      color: #fff;
+      z-index: 200;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -87,6 +98,8 @@
 
     <button id="start-btn">カメラを起動</button>
   </div>
+
+  <div id="debug">待機中...</div>
 
   <!-- p5.js (オーバーレイアニメーション用) -->
   <script src="p5.min.js"></script>

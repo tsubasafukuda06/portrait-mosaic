@@ -34,14 +34,25 @@ async function startAR() {
     inputHeight: video.videoHeight,
     maxTrack: 1,
     onUpdate: ({ type }) => {
+      const dbg = document.getElementById('debug');
       if (type === 'updateMatrix') {
-        if (!isTracking) { isTracking = true; showOverlay(); }
+        if (!isTracking) {
+          isTracking = true;
+          showOverlay();
+          if (dbg) dbg.textContent = '✅ 表紙を認識中';
+        }
       } else if (type === 'missing') {
-        if (isTracking)  { isTracking = false; hideOverlay(); }
+        if (isTracking) {
+          isTracking = false;
+          hideOverlay();
+          if (dbg) dbg.textContent = '🔍 表紙を探しています...';
+        }
       }
     },
   });
 
+  const dbg = document.getElementById('debug');
+  if (dbg) dbg.textContent = '🔍 表紙を探しています...';
   await controller.addImageTargetsFromBuffer(buffer);
   controller.processVideo(video);
 }
