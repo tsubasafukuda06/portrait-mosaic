@@ -97,9 +97,13 @@ function showError(msg) {
   document.body.appendChild(div);
 }
 
-// ── 起動 ─────────────────────────────────────────────────────────────────────
+// ── 起動（タップ後に開始） ────────────────────────────────────────────────────
 initOverlay();
-startAR().catch((err) => {
-  console.error(err);
-  showError('エラー: ' + (err.message || String(err)));
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('start-screen').style.display = 'none';
+  startAR().catch((err) => {
+    console.error(err);
+    showError('エラー: ' + (err.message || String(err)));
+  });
 });
