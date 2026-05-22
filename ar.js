@@ -1,61 +1,47 @@
 'use strict';
-// ES module として読み込まれる（index.html で type="module"）
-// MindAR standalone Controller版 (Three.js不要)
+// MindARThree (Three.js版) を使用
+// import mapで "three" をローカルファイルに解決
 
-import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js';
+import 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js';
 
-let controller  = null;
+let mindarThree = null;
 let isTracking  = false;
 let p5Instance  = null;
 
-// ── カメラ起動 ────────────────────────────────────────────────────────────────
-async function startCamera() {
-  const video = document.getElementById('video');
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
-    audio: false,
-  });
-  video.srcObject = stream;
-  await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
-  await video.play();
-  return video;
-}
-
 // ── AR起動 ────────────────────────────────────────────────────────────────────
 async function startAR() {
-  const video = await startCamera();
+  const container = document.getElementById('ar-container');
 
-  const response = await fetch('targets.mind');
-  if (!response.ok) throw new Error('targets.mind が見つかりません');
-  const buffer = await response.arrayBuffer();
-
-  controller = new window.MINDAR.IMAGE.Controller({
-    inputWidth:  video.videoWidth,
-    inputHeight: video.videoHeight,
-    maxTrack: 1,
-    onUpdate: ({ type }) => {
-      const dbg = document.getElementById('debug');
-      if (type === 'updateMatrix') {
-        if (!isTracking) {
-          isTracking = true;
-          showOverlay();
-          if (dbg) dbg.textContent = '✅ 表紙を認識中';
-        }
-      } else if (type === 'missing') {
-        if (isTracking) {
-          isTracking = false;
-          hideOverlay();
-          if (dbg) dbg.textContent = '🔍 表紙を探しています...';
-        }
-      }
-    },
+  mindarThree = new window.MINDAR.IMAGE.MindARThree({
+    container,
+    imageTargetSrc: 'targets.mind',
+    uiLoading:  'no',
+    uiScanning: 'no',
+    uiError:    'no',
   });
 
-  const dbg = document.getElementById('debug');
-  if (dbg) dbg.textContent = '🔍 表紙を探しています...';
+  const { renderer, scene, camera } = mindarThree;
 
-  controller.addImageTargetsFromBuffer(buffer);
-  controller.processVideo(video);
+  const anchor = mindarThree.addAnchor(0);
+
+  anchor.onTargetFound = () => {
+    isTracking = true;
+    showOverlay();
+    setDebug('✅ 表紙を認識中');
+  };
+
+  anchor.onTargetLost = () => {
+    isTracking = false;
+    hideOverlay();
+    setDebug('🔍 表紙を探しています...');
+  };
+
+  setDebug('🔍 表紙を探しています...');
+  await mindarThree.start();
+
+  renderer.setAnimationLoop(() => {
+    renderer.render(scene, camera);
+  });
 }
 
 // ── p5.js オーバーレイ ────────────────────────────────────────────────────────
@@ -70,12 +56,10 @@ function initOverlay() {
       cnv.style('display', 'none');
       p.noLoop();
     };
-
     p.draw = () => {
       p.clear();
-      // ── ここにアニメーションを実装 ──
+      // ── アニメーションをここに実装 ──
     };
-
     p.windowResized = () => {
       p.resizeCanvas(window.innerWidth, window.innerHeight);
     };
@@ -83,25 +67,28 @@ function initOverlay() {
 }
 
 function showOverlay() {
-  const cnv = document.querySelector('#p5-overlay canvas, canvas.p5Canvas');
+  const cnv = document.querySelector('canvas.p5Canvas');
   if (cnv) { cnv.style.display = 'block'; p5Instance && p5Instance.loop(); }
-  console.log('ターゲット検出');
 }
 
 function hideOverlay() {
-  const cnv = document.querySelector('#p5-overlay canvas, canvas.p5Canvas');
+  const cnv = document.querySelector('canvas.p5Canvas');
   if (cnv) { cnv.style.display = 'none'; p5Instance && p5Instance.noLoop(); }
-  console.log('ターゲット消失');
 }
 
-// ── タップ（patatap的インタラクション） ──────────────────────────────────────
+// ── タップ ────────────────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
   if (!isTracking) return;
   console.log('タップ:', e.clientX, e.clientY);
-  // ── ここにビジュアル変化を実装 ──
+  // ── patatap的エフェクトをここに実装 ──
 });
 
-// ── エラー表示 ────────────────────────────────────────────────────────────────
+// ── デバッグ表示 ──────────────────────────────────────────────────────────────
+function setDebug(msg) {
+  const el = document.getElementById('debug');
+  if (el) el.textContent = msg;
+}
+
 function showError(msg) {
   const div = document.createElement('div');
   div.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:#fff;font-size:14px;padding:12px;z-index:9999;white-space:pre-wrap;word-break:break-all;';
@@ -109,7 +96,7 @@ function showError(msg) {
   document.body.appendChild(div);
 }
 
-// ── 起動（タップ後に開始） ────────────────────────────────────────────────────
+// ── 起動 ─────────────────────────────────────────────────────────────────────
 initOverlay();
 
 document.getElementById('start-btn').addEventListener('click', () => {

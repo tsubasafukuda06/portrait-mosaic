@@ -7,12 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #video {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-    }
+    #ar-container { width: 100%; height: 100%; position: relative; }
     #start-screen {
       position: fixed;
       top: 0; left: 0;
@@ -25,12 +20,8 @@
       gap: 48px;
       z-index: 100;
     }
-
     /* ── スピーカーアイコン ── */
-    #speaker {
-      width: 80px;
-      height: 80px;
-    }
+    #speaker { width: 80px; height: 80px; }
     #speaker .wave {
       transform-origin: 10% 50%;
       animation: pulse 1.4s ease-in-out infinite;
@@ -39,15 +30,12 @@
     #speaker .wave-1 { animation-delay: 0s; }
     #speaker .wave-2 { animation-delay: 0.22s; }
     #speaker .wave-3 { animation-delay: 0.44s; }
-
     @keyframes pulse {
-      0%   { opacity: 0;   transform: scale(0.85); }
-      40%  { opacity: 1;   transform: scale(1);    }
-      80%  { opacity: 0;   transform: scale(1.08); }
-      100% { opacity: 0;   transform: scale(1.08); }
+      0%   { opacity: 0; transform: scale(0.85); }
+      40%  { opacity: 1; transform: scale(1);    }
+      80%  { opacity: 0; transform: scale(1.08); }
+      100% { opacity: 0; transform: scale(1.08); }
     }
-
-    /* ── スタートボタン ── */
     #start-btn {
       font-family: monospace;
       font-size: 18px;
@@ -72,38 +60,29 @@
   </style>
 </head>
 <body>
-  <video id="video" playsinline muted></video>
+  <div id="ar-container"></div>
 
   <!-- スタート画面 -->
   <div id="start-screen">
-
-    <!-- SVG スピーカーアイコン -->
     <svg id="speaker" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- スピーカー本体 -->
-      <path d="M10 28 L10 52 L26 52 L46 68 L46 12 L26 28 Z"
-            fill="#fff"/>
-      <!-- 音波 小 -->
-      <path class="wave wave-1"
-            d="M54 34 Q60 40 54 46"
-            stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-      <!-- 音波 中 -->
-      <path class="wave wave-2"
-            d="M62 26 Q74 40 62 54"
-            stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-      <!-- 音波 大 -->
-      <path class="wave wave-3"
-            d="M70 18 Q88 40 70 62"
-            stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <path d="M10 28 L10 52 L26 52 L46 68 L46 12 L26 28 Z" fill="#fff"/>
+      <path class="wave wave-1" d="M54 34 Q60 40 54 46" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <path class="wave wave-2" d="M62 26 Q74 40 62 54" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <path class="wave wave-3" d="M70 18 Q88 40 70 62" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
     </svg>
-
     <button id="start-btn">カメラを起動</button>
   </div>
 
-  <div id="debug">待機中...</div>
+  <div id="debug"></div>
 
-  <!-- p5.js (オーバーレイアニメーション用) -->
+  <!-- import map: "three" をローカルファイルに解決 -->
+  <script type="importmap">
+    { "imports": { "three": "./three.module.js" } }
+  </script>
+
+  <!-- p5.js -->
   <script src="p5.min.js"></script>
-  <!-- AR本体 (ES module: MindAR をCDNからimport) -->
+  <!-- AR本体 (MindARThree, Three.js版) -->
   <script type="module" src="ar.js"></script>
 </body>
 </html>
