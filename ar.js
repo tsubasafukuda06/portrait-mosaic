@@ -65,6 +65,7 @@ function spawnEffect(x, y, zone) {
 function initOverlay() {
   p5Instance = new p5((p) => {
     p.setup = () => {
+      p.pixelDensity(1);
       const cnv = p.createCanvas(window.innerWidth, window.innerHeight);
       cnv.style('position', 'fixed');
       cnv.style('top', '0');
