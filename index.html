@@ -86,7 +86,11 @@
   >
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
     <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
-      <!-- AR上に表示するコンテンツ（今は空、p5.jsオーバーレイで対応） -->
+      <a-plane id="face-plane"
+        width="1" height="1.480"
+        position="0 0 0"
+        material="shader: flat; side: double; transparent: false;">
+      </a-plane>
     </a-entity>
   </a-scene>
 
@@ -95,8 +99,6 @@
   <!-- ライブラリ（ローカル） -->
   <script src="aframe.min.js"></script>
   <script src="mindar-image-aframe.prod.js"></script>
-  <!-- p5.js -->
-  <script src="p5.min.js"></script>
   <!-- AR制御 -->
   <script src="ar.js"></script>
 </body>
