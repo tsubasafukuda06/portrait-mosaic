@@ -190,7 +190,7 @@ async function initAudio() {
 
 // 起動時に先読み（ArrayBufferとして保持、audioCtx前でも可）
 let winkRaw = null;
-fetch('sound/wink.wav')
+fetch('sound/zone5.wav')
   .then(r => r.arrayBuffer())
   .then(buf => {
     winkRaw = buf;
