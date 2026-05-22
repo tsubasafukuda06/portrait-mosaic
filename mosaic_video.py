@@ -59,20 +59,32 @@ def process_frame(frame_bgr):
     out = np.full((OUT_H, OUT_W, 3), BG[::-1], dtype=np.uint8)  # BGR
 
     # タイルごとに処理（S 単位でスキャン）
-    # S ごとにグループ化して一括処理
     for S in [QR_MOD, QR_MOD*2, QR_MOD*4, QR_MOD*6]:
-        # このSに対応するタイル起点 (x%S==0 かつ y%S==0 かつ tile_size==S)
         for y in range(0, OUT_H, S):
             for x in range(0, OUT_W, S):
                 if tile_size[y, x] != S:
                     continue
-                # タイル中央の輝度
                 ty = min(y + S // 2, OUT_H - 1)
                 tx = min(x + S // 2, OUT_W - 1)
                 if gray[ty, tx] < THRESHOLD:
                     x2 = min(x + S, OUT_W)
                     y2 = min(y + S, OUT_H)
-                    out[y:y2, x:x2] = FG[::-1]  # BGR
+                    out[y:y2, x:x2] = FG[::-1]
+
+    # ゾーン境界ギャップ補填（ar.jsと同じロジック）
+    for y in range(0, OUT_H, QR_MOD):
+        for x in range(0, OUT_W, QR_MOD):
+            S  = tile_size[y, x]
+            ty = (y // S) * S
+            tx = (x // S) * S
+            if tile_size[ty, tx] != S:
+                # 代表タイルが別ゾーン → このセルを個別に描画
+                cy = min(y + QR_MOD // 2, OUT_H - 1)
+                cx = min(x + QR_MOD // 2, OUT_W - 1)
+                if gray[cy, cx] < THRESHOLD:
+                    y2 = min(y + QR_MOD, OUT_H)
+                    x2 = min(x + QR_MOD, OUT_W)
+                    out[y:y2, x:x2] = FG[::-1]
 
     return out
 
