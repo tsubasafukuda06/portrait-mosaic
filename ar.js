@@ -349,7 +349,7 @@ document.addEventListener('click', (e) => {
   if (!audioCtx) initAudio();
 
   const zone = getZone(e.clientX, e.clientY);
-  playTone(ZONE_FREQ[zone]);
+  if (zone !== 5) playTone(ZONE_FREQ[zone]);
 
   if (zone === 5) {
     // 中央右 → ウィンク動画
