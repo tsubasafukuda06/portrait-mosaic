@@ -451,18 +451,22 @@ function createDissolveMaterial() {
 
         vec3 n = normalize(vNormal);
 
-        // 4色グラデーション
-        vec3 cA = vec3(0.969, 0.667, 0.133);  // #F7AA22
-        vec3 cB = vec3(0.051, 0.494, 0.263);  // #0D7E43
-        vec3 cC = vec3(0.282, 0.808, 0.898);  // #48CEE5
-        vec3 cD = vec3(0.855, 0.118, 0.224);  // #DA1E39
+        // 6方向の法線にパステルカラーを割り当て、回転で多色グラデーションに
+        vec3 cPx = vec3(1.00, 0.72, 0.85);  // +X ピンク
+        vec3 cNx = vec3(0.66, 0.94, 0.82);  // -X ミント
+        vec3 cPy = vec3(1.00, 0.97, 0.66);  // +Y イエロー
+        vec3 cNy = vec3(0.85, 0.72, 1.00);  // -Y ラベンダー
+        vec3 cPz = vec3(0.66, 0.85, 0.94);  // +Z ブルー
+        vec3 cNz = vec3(1.00, 0.85, 0.72);  // -Z ピーチ
 
-        float t = clamp((n.x + n.y) * 0.5 + 0.5, 0.0, 1.0);
-        float s = t * 3.0;
-        vec3 color;
-        if      (s < 1.0) color = mix(cA, cB, s);
-        else if (s < 2.0) color = mix(cB, cC, s - 1.0);
-        else              color = mix(cC, cD, s - 2.0);
+        float wx = max( n.x, 0.0);
+        float wnx= max(-n.x, 0.0);
+        float wy = max( n.y, 0.0);
+        float wny= max(-n.y, 0.0);
+        float wz = max( n.z, 0.0);
+        float wnz= max(-n.z, 0.0);
+        float total = wx + wnx + wy + wny + wz + wnz + 0.001;
+        vec3 color = (cPx*wx + cNx*wnx + cPy*wy + cNy*wny + cPz*wz + cNz*wnz) / total;
 
         // ソフトな拡散照明
         float diff = max(dot(n, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.4 + 0.6;
