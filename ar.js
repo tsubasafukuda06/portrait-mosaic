@@ -51,6 +51,7 @@ let isPlayingWink = false;
 // キラキラ エフェクト
 const WINK_EYE = { x: 360, y: 355 };  // faceCanvas座標（ウィンクしている目）
 const sparkles  = [];
+const ripples   = [];
 
 // スクリーン空間のオーバーレイ（sparkle用）
 let overlayCanvas = null;
@@ -290,21 +291,56 @@ function spawnSparkles() {
   }
 }
 
-function drawSparkles() {
+function drawOverlay() {
   overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+  // リップル
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const rp = ripples[i];
+    rp.r    += 9;
+    rp.alpha -= 0.045;
+    if (rp.alpha <= 0) { ripples.splice(i, 1); continue; }
+    overlayCtx.globalAlpha = rp.alpha;
+    overlayCtx.strokeStyle = '#ffffff';
+    overlayCtx.lineWidth   = 2;
+    overlayCtx.beginPath();
+    overlayCtx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+    overlayCtx.stroke();
+  }
+
+  // キラキラ
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const s = sparkles[i];
     s.x    += s.vx;
     s.y    += s.vy;
-    s.vy   += 0.15;   // 重力
+    s.vy   += 0.15;
     s.alpha -= 0.025;
     if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
-
     overlayCtx.globalAlpha = s.alpha;
-    overlayCtx.fillStyle   = '#FFD700';  // 黄色
+    overlayCtx.fillStyle   = '#FFD700';
     overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
+
   overlayCtx.globalAlpha = 1;
+}
+
+function spawnRipple(x, y) {
+  ripples.push({ x, y, r: 0, alpha: 0.55 });
+}
+
+let overlayTicking = false;
+function ensureOverlayLoop() {
+  if (overlayTicking) return;
+  overlayTicking = true;
+  (function tick() {
+    if (ripples.length === 0 && sparkles.length === 0) {
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      overlayTicking = false;
+      return;
+    }
+    drawOverlay();
+    requestAnimationFrame(tick);
+  })();
 }
 
 // ── ウィンク動画再生 ──────────────────────────────────────────────────────────
@@ -322,15 +358,15 @@ function playWink() {
 
   playWinkSound();
   spawnSparkles();
+  ensureOverlayLoop();
 
-  // tickループは1本だけ維持
+  // faceCanvas更新ループ（動画フレームを貼り続ける）
   if (!winkTicking) {
     winkTicking = true;
     (function tick() {
       if (!isPlayingWink) { winkTicking = false; return; }
       faceCtx.drawImage(vid, 0, 0, CANVAS_W, CANVAS_H);
       if (texture) texture.needsUpdate = true;
-      drawSparkles();
       requestAnimationFrame(tick);
     })();
   }
@@ -339,7 +375,7 @@ function playWink() {
     isPlayingWink = false;
     redrawMosaic();
     if (texture) texture.needsUpdate = true;
-    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    // オーバーレイはsparkles配列が空になり次第自動停止
   };
 }
 
@@ -350,6 +386,9 @@ document.addEventListener('click', (e) => {
 
   const zone = getZone(e.clientX, e.clientY);
   if (zone !== 5) playTone(ZONE_FREQ[zone]);
+
+  spawnRipple(e.clientX, e.clientY);
+  ensureOverlayLoop();
 
   if (zone === 5) {
     // 中央右 → ウィンク動画
