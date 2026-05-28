@@ -418,42 +418,15 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   requestAnimationFrame(animFall);
 }
 
-// Blenderの VoxelTriTone シェーダーをThree.jsで再現
-// Normal.Y > 0.5 → 上面(オレンジ) / Normal.X < -0.5 → 左側面(グリーン) / 他 → グレー
-function createTriToneShader() {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      colTop:   { value: new THREE.Color(0xF32B2F) },  // 上面: 赤
-      colGreen: { value: new THREE.Color(0x4B4496) },  // 左側面: 濃い青
-      colGray:  { value: new THREE.Color(0xFFC600) },  // 正面: オレンジ
-      opacity:  { value: 1.0 },
-    },
-    vertexShader: `
-      varying vec3 vNormal;
-      void main() {
-        vNormal = normal;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3  colTop;
-      uniform vec3  colGreen;
-      uniform vec3  colGray;
-      uniform float opacity;
-      varying vec3  vNormal;
-      void main() {
-        vec3 n = normalize(vNormal);
-        vec3 color;
-        if      (n.y > 0.5)  color = colTop;
-        else if (n.x < -0.5) color = colGreen;
-        else                  color = colGray;
-        // sRGBガンマ補正（ShaderMaterialはカラー管理が自動適用されないため）
-        color = pow(color, vec3(0.4545));
-        gl_FragColor = vec4(color, opacity);
-      }
-    `,
+// 単色MeshStandardMaterial（照明で陰影・立体感を出す）
+function createCharMaterial() {
+  return new THREE.MeshStandardMaterial({
+    color:       0xFFFFFF,
+    roughness:   0.55,
+    metalness:   0.05,
     transparent: true,
-    side: THREE.DoubleSide,
+    opacity:     1.0,
+    side:        THREE.DoubleSide,
   });
 }
 
@@ -463,11 +436,11 @@ function spawnHoshiShinichi() {
 
   HOSHI_CHARS.forEach((def, i) => {
     loadGLB(def.path, scene => {
-      const obj    = scene.clone(true);
-      const shader = createTriToneShader();
+      const obj = scene.clone(true);
+      const mat = createCharMaterial();
 
       obj.traverse(child => {
-        if (child.isMesh) child.material = shader;
+        if (child.isMesh) child.material = mat;
       });
 
       // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
@@ -589,6 +562,24 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const sceneEl = document.querySelector('a-scene');
   if (!sceneEl.hasLoaded) {
     await new Promise(resolve => sceneEl.addEventListener('loaded', resolve, { once: true }));
+  }
+
+  // Three.jsライト追加（MeshStandardMaterialの陰影に必要）
+  const threeScene = sceneEl.object3D;
+  if (!threeScene.getObjectByName('_charAmbient')) {
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    ambient.name = '_charAmbient';
+    threeScene.add(ambient);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    dirLight.name = '_charDir';
+    dirLight.position.set(1, 3, 2);  // 右上・手前から照らす
+    threeScene.add(dirLight);
+
+    const fillLight = new THREE.DirectionalLight(0xaaccff, 0.4);
+    fillLight.name = '_charFill';
+    fillLight.position.set(-1, -1, 1);  // 左下から弱い青白い補助光
+    threeScene.add(fillLight);
   }
 
   const arSystem = sceneEl.systems['mindar-image-system'];
