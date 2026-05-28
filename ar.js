@@ -182,21 +182,26 @@ const ZONE_FREQ = [
 
 async function initAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  // wink.wav をデコード（fetch済みのrawがあれば即デコード）
-  if (winkRaw) {
-    winkBuffer = await audioCtx.decodeAudioData(winkRaw);
-    winkRaw = null;
-  }
+  if (winkRaw)   { winkBuffer   = await audioCtx.decodeAudioData(winkRaw);   winkRaw   = null; }
+  if (zone3Raw)  { zone3Buffer  = await audioCtx.decodeAudioData(zone3Raw);  zone3Raw  = null; }
 }
 
-// 起動時に先読み（ArrayBufferとして保持、audioCtx前でも可）
+// zone5（ウィンク音）先読み
 let winkRaw = null;
 fetch('sound/zone5.wav')
   .then(r => r.arrayBuffer())
   .then(buf => {
     winkRaw = buf;
-    // audioCtxが既にあればすぐデコード
     if (audioCtx) audioCtx.decodeAudioData(buf).then(b => { winkBuffer = b; winkRaw = null; });
+  });
+
+// zone3（星新一音）先読み
+let zone3Raw = null, zone3Buffer = null;
+fetch('sound/zone3.wav')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    zone3Raw = buf;
+    if (audioCtx) audioCtx.decodeAudioData(buf).then(b => { zone3Buffer = b; zone3Raw = null; });
   });
 
 function playWinkSound() {
@@ -204,6 +209,17 @@ function playWinkSound() {
   const src  = audioCtx.createBufferSource();
   const gain = audioCtx.createGain();
   src.buffer = winkBuffer;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+  src.start();
+}
+
+function playZone3Sound() {
+  if (!audioCtx || !zone3Buffer) return;
+  const src  = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain();
+  src.buffer = zone3Buffer;
   src.connect(gain);
   gain.connect(audioCtx.destination);
   gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
@@ -556,7 +572,7 @@ document.addEventListener('click', (e) => {
 
   spawnZoneFlash(zone);
   ensureOverlayLoop();
-  if (zone === 3) spawnHoshiShinichi();
+  if (zone === 3) { playZone3Sound(); spawnHoshiShinichi(); }
 
   if (zone === 5) {
     // 中央右 → ウィンク動画
