@@ -492,9 +492,9 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
 function createTriToneShader() {
   return new THREE.ShaderMaterial({
     uniforms: {
-      colTop:   { value: new THREE.Color(0xE27540) },
-      colGreen: { value: new THREE.Color(0x5A7222) },
-      colGray:  { value: new THREE.Color(0x938FA8) },
+      colTop:   { value: new THREE.Color(0xF32B2F) },  // 上面: 赤
+      colGreen: { value: new THREE.Color(0x4B4496) },  // 左側面: 濃い青
+      colGray:  { value: new THREE.Color(0xFFC600) },  // 正面: オレンジ
       opacity:  { value: 1.0 },
     },
     vertexShader: `
