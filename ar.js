@@ -52,14 +52,33 @@ function sampleBright(cx, cy) {
   return srcPixels[p] * 0.299 + srcPixels[p + 1] * 0.587 + srcPixels[p + 2] * 0.114;
 }
 
+// 座標ベースの決定論的ハッシュ（再描画でブレない）
+function tileHash(x, y) {
+  return (((x * 1664525 + y * 1013904223) >>> 0) % 10000) / 10000;
+}
+
+// FGタイルをドット柄付きで描画
+function drawFGTile(x, y, S) {
+  faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
+  faceCtx.fillRect(x, y, S, S);
+  // BGカラーの小さな正方形をランダム位置に配置
+  const dotS   = Math.max(2, Math.floor(S * 0.30));
+  const margin = Math.max(1, Math.floor(S * 0.12));
+  const range  = S - dotS - margin * 2;
+  if (range > 0) {
+    const dx = x + margin + Math.floor(tileHash(x, y)     * range);
+    const dy = y + margin + Math.floor(tileHash(y + 1, x) * range);
+    faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
+    faceCtx.fillRect(dx, dy, dotS, dotS);
+  }
+}
+
 function redrawMosaic() {
   faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
   faceCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   const cols = Math.ceil(CANVAS_W / QR_MOD);
   const rows = Math.ceil(CANVAS_H / QR_MOD);
-
-  faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -79,7 +98,7 @@ function redrawMosaic() {
         const tS  = ZONES.find(z => td < z[0])[1];
         if (tS !== S) {
           if (sampleBright(cx_, cy_) < THRESHOLD) {
-            faceCtx.fillRect(x, y, QR_MOD, QR_MOD);
+            drawFGTile(x, y, QR_MOD);
           }
         }
         continue;
@@ -89,7 +108,7 @@ function redrawMosaic() {
       const tileCY = y + S / 2;
 
       if (sampleBright(tileCX, tileCY) < THRESHOLD) {
-        faceCtx.fillRect(x, y, S, S);
+        drawFGTile(x, y, S);
       }
     }
   }
