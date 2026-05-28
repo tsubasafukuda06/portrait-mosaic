@@ -445,8 +445,8 @@ function createDissolveMaterial() {
         vec3 n = normalize(vNormal);
 
         // #BDFF33 → #6FFDF4 のグラデーション
-        vec3 cA = vec3(0.741, 1.000, 0.200);  // #BDFF33
-        vec3 cB = vec3(0.435, 0.992, 0.957);  // #6FFDF4
+        vec3 cA = vec3(0.988, 0.153, 0.180);  // #FC272E
+        vec3 cB = vec3(0.137, 0.878, 0.961);  // #23E0F5
 
         // X・Y両軸を使って回転のどの角度でも色変化が出るようにする
         float t = (n.x + n.y) * 0.5 + 0.5;
