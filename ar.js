@@ -50,8 +50,8 @@ let isPlayingWink = false;
 
 // キラキラ エフェクト
 const WINK_EYE = { x: 360, y: 355 };  // faceCanvas座標（ウィンクしている目）
-const sparkles  = [];
-const ripples   = [];
+const sparkles    = [];
+const zoneFlashes = [];
 
 // スクリーン空間のオーバーレイ（sparkle用）
 let overlayCanvas = null;
@@ -294,18 +294,18 @@ function spawnSparkles() {
 function drawOverlay() {
   overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  // リップル
-  for (let i = ripples.length - 1; i >= 0; i--) {
-    const rp = ripples[i];
-    rp.r    += 9;
-    rp.alpha -= 0.045;
-    if (rp.alpha <= 0) { ripples.splice(i, 1); continue; }
-    overlayCtx.globalAlpha = rp.alpha;
-    overlayCtx.strokeStyle = '#ffffff';
-    overlayCtx.lineWidth   = 2;
-    overlayCtx.beginPath();
-    overlayCtx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-    overlayCtx.stroke();
+  // ゾーンフラッシュ
+  const zw = overlayCanvas.width  / 3;
+  const zh = overlayCanvas.height / 3;
+  for (let i = zoneFlashes.length - 1; i >= 0; i--) {
+    const f = zoneFlashes[i];
+    f.alpha -= 0.08;
+    if (f.alpha <= 0) { zoneFlashes.splice(i, 1); continue; }
+    const col = f.zone % 3;
+    const row = Math.floor(f.zone / 3);
+    overlayCtx.globalAlpha = f.alpha;
+    overlayCtx.fillStyle   = '#ffffff';
+    overlayCtx.fillRect(col * zw, row * zh, zw, zh);
   }
 
   // キラキラ
@@ -324,8 +324,8 @@ function drawOverlay() {
   overlayCtx.globalAlpha = 1;
 }
 
-function spawnRipple(x, y) {
-  ripples.push({ x, y, r: 0, alpha: 0.55 });
+function spawnZoneFlash(zone) {
+  zoneFlashes.push({ zone, alpha: 0.45 });
 }
 
 let overlayTicking = false;
@@ -333,7 +333,7 @@ function ensureOverlayLoop() {
   if (overlayTicking) return;
   overlayTicking = true;
   (function tick() {
-    if (ripples.length === 0 && sparkles.length === 0) {
+    if (zoneFlashes.length === 0 && sparkles.length === 0) {
       overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
       overlayTicking = false;
       return;
@@ -387,7 +387,7 @@ document.addEventListener('click', (e) => {
   const zone = getZone(e.clientX, e.clientY);
   if (zone !== 5) playTone(ZONE_FREQ[zone]);
 
-  spawnRipple(e.clientX, e.clientY);
+  spawnZoneFlash(zone);
   ensureOverlayLoop();
 
   if (zone === 5) {
