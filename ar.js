@@ -423,7 +423,7 @@ function createDissolveMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
       uDissolve: { value: 0.0 },
-      uOpacity:  { value: 0.7 },
+      uOpacity:  { value: 1.0 },
     },
     vertexShader: `
       varying vec3 vNormal;
