@@ -235,12 +235,12 @@ function spawnSparkles() {
     // ドットサイズはモザイクタイルに合わせて5の倍数
     const size  = [5, 10, 10, 15][Math.floor(Math.random() * 4)];
     sparkles.push({
-      x:  origin.x + (Math.random() - 0.5) * 20,
-      y:  origin.y + (Math.random() - 0.5) * 10,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
+      x:    origin.x + (Math.random() - 0.5) * 20,
+      y:    origin.y + (Math.random() - 0.5) * 10,
+      vx:   Math.cos(angle) * speed,
+      vy:   Math.sin(angle) * speed,
       size,
-      alpha: 1,
+      life: 20 + Math.floor(Math.random() * 40), // フレーム数でランダムな寿命
     });
   }
 }
@@ -265,12 +265,12 @@ function drawOverlay() {
   // キラキラ
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const s = sparkles[i];
-    s.x    += s.vx;
-    s.y    += s.vy;
-    s.vy   += 0.15;
-    s.alpha -= 0.025;
-    if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
-    overlayCtx.globalAlpha = s.alpha;
+    s.x  += s.vx;
+    s.y  += s.vy;
+    s.vy += 0.15;
+    s.life--;
+    if (s.life <= 0) { sparkles.splice(i, 1); continue; }
+    overlayCtx.globalAlpha = 1;
     overlayCtx.fillStyle   = '#FF00D3';
     overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
