@@ -210,11 +210,11 @@ function canvasToScreen(cx, cy) {
   const camera = document.querySelector('a-camera');
   if (!target || !camera) return null;
 
-  // canvas UV → a-plane上の3Dローカル座標（width=1, height=1.480, 中心が原点）
+  // canvas UV → a-plane上の3Dローカル座標（width=1, height=1.402, 中心が原点）
   const u = cx / CANVAS_W;
   const v = cy / CANVAS_H;
   const localX =  (u - 0.5) * 1;
-  const localY = -(v - 0.5) * 1.480;  // Y軸反転
+  const localY = -(v - 0.5) * 1.402;  // Y軸反転
 
   const vec = new THREE.Vector3(localX, localY, 0);
   target.object3D.updateMatrixWorld();
