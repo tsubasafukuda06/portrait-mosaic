@@ -424,6 +424,7 @@ function createDissolveMaterial() {
     uniforms: {
       uColor:    { value: new THREE.Color(0x0364ff) },
       uDissolve: { value: 0.0 },
+      uOpacity:  { value: 0.5 },
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -435,6 +436,7 @@ function createDissolveMaterial() {
     fragmentShader: `
       uniform vec3  uColor;
       uniform float uDissolve;
+      uniform float uOpacity;
       varying vec3  vNormal;
       float hash(vec2 p) {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -444,10 +446,11 @@ function createDissolveMaterial() {
         if (hash(floor(gl_FragCoord.xy / 5.0)) < uDissolve) discard;
         // ランバート拡散（ライトはar.jsで追加済みの方向に合わせる）
         float diff = max(dot(vNormal, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.6 + 0.4;
-        gl_FragColor = vec4(uColor * diff, 1.0);
+        gl_FragColor = vec4(uColor * diff, uOpacity);
       }
     `,
-    side: THREE.DoubleSide,
+    side:        THREE.DoubleSide,
+    transparent: true,
   });
 }
 
