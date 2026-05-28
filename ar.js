@@ -379,29 +379,6 @@ function playWink() {
   };
 }
 
-// ── フローティングテキスト ────────────────────────────────────────────────────
-const TAP_LABELS = ['星新一', 'ショートショート'];
-let tapCount = 0;
-
-function makeTextCanvas(label, color) {
-  const canvas = document.createElement('canvas');
-  canvas.width  = 512;
-  canvas.height = 128;
-  const ctx     = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 512, 128);
-  ctx.font         = 'bold 60px sans-serif';
-  ctx.fillStyle    = color;
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, 256, 64);
-  return canvas;
-}
-
-function spawnFloatingText() {
-  const label = TAP_LABELS[tapCount % 2];
-  tapCount++;
-  if (label === '星新一') { spawnHoshiShinichi(); } else { spawnCanvasText(label); }
-}
 
 // ── 星新一 3D GLBキャラクター ─────────────────────────────────────────────────
 const HOSHI_CHARS = [
@@ -568,97 +545,6 @@ function spawnHoshiShinichi() {
   });
 }
 
-// ── ショートショート キャンバステキスト ───────────────────────────────────────
-function spawnCanvasText(label) {
-
-  const target = document.getElementById('ar-target');
-  if (!target || !target.object3D) return;
-
-  const w = 0.65;
-  const h = w * 128 / 512;
-
-  // メインテキスト
-  const tex  = new THREE.CanvasTexture(makeTextCanvas(label, '#ffffff'));
-  const mat  = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-
-  const x      = (Math.random() - 0.5) * 0.6;
-  const y      = (Math.random() - 0.5) * 1.0;
-  const startZ = 0.5 + Math.random() * 0.2;
-  const floorZ = 0.02;
-
-  mesh.position.set(x, y, startZ);
-  target.object3D.add(mesh);
-
-  // シャドウ（着地面）
-  const sTex    = new THREE.CanvasTexture(makeTextCanvas(label, '#000000'));
-  const sMat    = new THREE.MeshBasicMaterial({ map: sTex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-  const shadow  = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.1, h * 1.1), sMat);
-  shadow.position.set(x + 0.03, y - 0.03, 0.001);
-  target.object3D.add(shadow);
-
-  const MAX_SHADOW  = 0.28;
-  const fallDur     = 700;
-  const squishDur   = 100;
-  const unsquishDur = 200;
-  const holdDur     = 800;
-  const fadeDur     = 1500;
-
-  function easeInQuart(t) { return t * t * t * t; }
-  function easeOutQuad(t)  { return t * (2 - t); }
-
-  let t0 = null;
-
-  // 1. 落下（近づくほど影が濃くなる）
-  function animFall(now) {
-    if (!t0) t0 = now;
-    const t    = Math.min((now - t0) / fallDur, 1);
-    const ease = easeInQuart(t);
-    mesh.position.z = startZ + (floorZ - startZ) * ease;
-    sMat.opacity    = MAX_SHADOW * ease;
-    if (t < 1) { requestAnimationFrame(animFall); }
-    else { t0 = null; requestAnimationFrame(animSquish); }
-  }
-
-  // 2. スカッシュ（着地）
-  function animSquish(now) {
-    if (!t0) t0 = now;
-    const t = Math.min((now - t0) / squishDur, 1);
-    mesh.scale.set(1 + 0.25 * t, 1 - 0.35 * t, 1);
-    if (t < 1) { requestAnimationFrame(animSquish); }
-    else { t0 = null; requestAnimationFrame(animUnsquish); }
-  }
-
-  // 3. アンスカッシュ
-  function animUnsquish(now) {
-    if (!t0) t0 = now;
-    const t = Math.min((now - t0) / unsquishDur, 1);
-    const e = easeOutQuad(t);
-    mesh.scale.set(1.25 - 0.25 * e, 0.65 + 0.35 * e, 1);
-    if (t < 1) { requestAnimationFrame(animUnsquish); }
-    else {
-      mesh.scale.set(1, 1, 1);
-      setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur);
-    }
-  }
-
-  // 4. フェードアウト
-  function animFade(now) {
-    if (!t0) t0 = now;
-    const t = Math.min((now - t0) / fadeDur, 1);
-    mat.opacity  = 1 - t;
-    sMat.opacity = MAX_SHADOW * (1 - t);
-    if (t < 1) { requestAnimationFrame(animFade); }
-    else {
-      target.object3D.remove(mesh);
-      target.object3D.remove(shadow);
-      mesh.geometry.dispose();   mat.dispose();  tex.dispose();
-      shadow.geometry.dispose(); sMat.dispose(); sTex.dispose();
-    }
-  }
-
-  requestAnimationFrame(animFall);
-}
 
 // ── タップ ────────────────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
@@ -670,7 +556,7 @@ document.addEventListener('click', (e) => {
 
   spawnZoneFlash(zone);
   ensureOverlayLoop();
-  spawnFloatingText();
+  spawnHoshiShinichi();
 
   if (zone === 5) {
     // 中央右 → ウィンク動画
