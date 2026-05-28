@@ -421,7 +421,7 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
 // 単色MeshStandardMaterial（照明で陰影・立体感を出す）
 function createCharMaterial() {
   return new THREE.MeshStandardMaterial({
-    color:       0xFFFFFF,
+    color:       0xa1d7d7,
     roughness:   0.55,
     metalness:   0.05,
     transparent: true,
