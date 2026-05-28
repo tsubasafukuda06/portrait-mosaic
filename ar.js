@@ -1,8 +1,8 @@
 'use strict';
 
 // ── Mosaic config ─────────────────────────────────────────────────────────────
-const FG        = [16, 227, 212];
-const BG        = [251, 244, 214];
+const FG        = [21, 223, 223];
+const BG        = [238, 238, 221];
 const QR_MOD    = 5;
 const THRESHOLD = 120;
 
@@ -271,7 +271,7 @@ function drawOverlay() {
     s.alpha -= 0.025;
     if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
     overlayCtx.globalAlpha = s.alpha;
-    overlayCtx.fillStyle   = '#FFD700';
+    overlayCtx.fillStyle   = '#FF0CBA';
     overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
 
