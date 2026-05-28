@@ -336,9 +336,9 @@ function playWink() {
 
 // ── 星新一 3D GLBキャラクター ─────────────────────────────────────────────────
 const HOSHI_CHARS = [
-  { path: '3d/hoshi.glb', xOffset: -0.22 },
-  { path: '3d/shin.glb',  xOffset:  0.00 },
-  { path: '3d/ichi.glb',  xOffset:  0.22 },
+  { path: '3d/hoshi.glb' },
+  { path: '3d/shin.glb'  },
+  { path: '3d/ichi.glb'  },
 ];
 
 // GLBキャッシュ（ロード済みシーンを保持）
@@ -461,9 +461,6 @@ function spawnHoshiShinichi() {
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
 
-  const baseX = (Math.random() - 0.5) * 0.3;
-  const baseY = (Math.random() - 0.5) * 0.8;
-
   HOSHI_CHARS.forEach((def, i) => {
     loadGLB(def.path, scene => {
       const obj    = scene.clone(true);
@@ -484,8 +481,9 @@ function spawnHoshiShinichi() {
       const center = box.getCenter(new THREE.Vector3());
       obj.position.sub(center.multiplyScalar(s));
 
-      const x      = baseX + def.xOffset;
-      const y      = baseY;
+      // 各文字で完全に独立したランダム位置
+      const x      = (Math.random() - 0.5) * 0.9;
+      const y      = (Math.random() - 0.5) * 1.2;
       const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
       const rotDir = (Math.random() > 0.5 ? 1 : -1);
       const rotSpd = 0.015 + Math.random() * 0.015;
