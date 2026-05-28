@@ -472,8 +472,12 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
     const t = Math.min((now - t0) / fadeDur, 1);
     obj.traverse(child => {
       if (child.isMesh && child.material) {
-        child.material.transparent = true;
-        child.material.opacity     = 1 - t;
+        if (child.material.uniforms && child.material.uniforms.opacity) {
+          child.material.uniforms.opacity.value = 1 - t;
+        } else {
+          child.material.transparent = true;
+          child.material.opacity     = 1 - t;
+        }
       }
     });
     if (t < 1) { requestAnimationFrame(animFade); }
@@ -483,30 +487,58 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   requestAnimationFrame(animFall);
 }
 
-// PBR用ライト（初回のみ追加）
-let glbLightsAdded = false;
-function ensureGLBLights(target) {
-  if (glbLightsAdded) return;
-  glbLightsAdded = true;
-  const ambient = new THREE.AmbientLight(0xffffff, 2.5);
-  const dir     = new THREE.DirectionalLight(0xffffff, 1.5);
-  dir.position.set(0.5, 1, 1);
-  target.object3D.add(ambient);
-  target.object3D.add(dir);
+// Blenderの VoxelTriTone シェーダーをThree.jsで再現
+// Normal.Y > 0.5 → 上面(オレンジ) / Normal.X < -0.5 → 左側面(グリーン) / 他 → グレー
+function createTriToneShader() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      colTop:   { value: new THREE.Color(0xE27540) },
+      colGreen: { value: new THREE.Color(0x5A7222) },
+      colGray:  { value: new THREE.Color(0x938FA8) },
+      opacity:  { value: 1.0 },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normal;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3  colTop;
+      uniform vec3  colGreen;
+      uniform vec3  colGray;
+      uniform float opacity;
+      varying vec3  vNormal;
+      void main() {
+        vec3 n = normalize(vNormal);
+        vec3 color;
+        if      (n.y > 0.5)  color = colTop;
+        else if (n.x < -0.5) color = colGreen;
+        else                  color = colGray;
+        gl_FragColor = vec4(color, opacity);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+  });
 }
 
 function spawnHoshiShinichi() {
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
 
-  ensureGLBLights(target);
-
   const baseX = (Math.random() - 0.5) * 0.3;
   const baseY = (Math.random() - 0.5) * 0.8;
 
   HOSHI_CHARS.forEach((def, i) => {
     loadGLB(def.path, scene => {
-      const obj = scene.clone(true);
+      const obj    = scene.clone(true);
+      const shader = createTriToneShader();
+
+      obj.traverse(child => {
+        if (child.isMesh) child.material = shader;
+      });
 
       // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
       const box     = new THREE.Box3().setFromObject(obj);
