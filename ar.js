@@ -359,13 +359,10 @@ function loadGLB(path, cb) {
 function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   const floorZ     = 0.02;
   const fallDur    = 750 + i * 60;
-  const squishDur  = 100;
-  const unsquishDur = 200;
   const holdDur    = 700;
   const fadeDur    = 1200;
 
   function easeInQuart(t) { return t * t * t * t; }
-  function easeOutQuad(t)  { return t * (2 - t); }
 
   let t0 = null;
 
@@ -375,40 +372,15 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
     obj.position.z = startZ + (floorZ - startZ) * easeInQuart(t);
     obj.rotation.y += rotSpd * rotDir;
     if (t < 1) { requestAnimationFrame(animFall); }
-    else { t0 = null; requestAnimationFrame(animSquish); }
-  }
-
-  function animSquish(now) {
-    if (!t0) t0 = now;
-    const t = Math.min((now - t0) / squishDur, 1);
-    obj.scale.set(S * (1 + 0.3 * t), S * (1 - 0.4 * t), S);
-    if (t < 1) { requestAnimationFrame(animSquish); }
-    else { t0 = null; requestAnimationFrame(animUnsquish); }
-  }
-
-  function animUnsquish(now) {
-    if (!t0) t0 = now;
-    const t = Math.min((now - t0) / unsquishDur, 1);
-    const e = easeOutQuad(t);
-    obj.scale.set(S * (1.3 - 0.3 * e), S * (0.6 + 0.4 * e), S);
-    if (t < 1) { requestAnimationFrame(animUnsquish); }
-    else {
-      obj.scale.set(S, S, S);
-      setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur);
-    }
+    else { setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur); }
   }
 
   function animFade(now) {
     if (!t0) t0 = now;
     const t = Math.min((now - t0) / fadeDur, 1);
     obj.traverse(child => {
-      if (child.isMesh && child.material) {
-        if (child.material.uniforms && child.material.uniforms.opacity) {
-          child.material.uniforms.opacity.value = 1 - t;
-        } else {
-          child.material.transparent = true;
-          child.material.opacity     = 1 - t;
-        }
+      if (child.isMesh && child.material && child.material.uniforms) {
+        child.material.uniforms.uDissolve.value = t;
       }
     });
     if (t < 1) { requestAnimationFrame(animFade); }
@@ -443,18 +415,39 @@ function createIchiObject() {
     bevelSegments:  4,
   });
   geo.center();
-  return new THREE.Mesh(geo, createCharMaterial());
+  return new THREE.Mesh(geo, createDissolveMaterial());
 }
 
-// 単色MeshStandardMaterial（照明で陰影・立体感を出す）
-function createCharMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color:       0xa1d7d7,
-    roughness:   0.55,
-    metalness:   0.05,
-    transparent: true,
-    opacity:     1.0,
-    side:        THREE.DoubleSide,
+// ディゾルブShaderMaterial（uDissolve: 0→1 でモザイクブロック単位に消える）
+function createDissolveMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColor:    { value: new THREE.Color(0xa1d7d7) },
+      uDissolve: { value: 0.0 },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3  uColor;
+      uniform float uDissolve;
+      varying vec3  vNormal;
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      void main() {
+        // QR_MOD(5px)に合わせたブロック単位でランダム消去
+        if (hash(floor(gl_FragCoord.xy / 5.0)) < uDissolve) discard;
+        // ランバート拡散（ライトはar.jsで追加済みの方向に合わせる）
+        float diff = max(dot(vNormal, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.6 + 0.4;
+        gl_FragColor = vec4(uColor * diff, 1.0);
+      }
+    `,
+    side: THREE.DoubleSide,
   });
 }
 
@@ -494,7 +487,7 @@ function spawnHoshiShinichi() {
 
     loadGLB(def.path, scene => {
       const obj = scene.clone(true);
-      const mat = createCharMaterial();
+      const mat = createDissolveMaterial();
       obj.traverse(child => {
         if (child.isMesh) child.material = mat;
       });
