@@ -11,7 +11,7 @@ OUTPUT = "reference/wink_mosaic.mp4"
 
 # ── カバー.js と同じ設定 ──────────────────────────────────────────────────────
 FG        = np.array([21,  223, 223], dtype=np.uint8)   # #15DFDF
-BG        = np.array([243, 243, 216], dtype=np.uint8)   # #F3F3D8
+BG        = np.array([243, 243, 207], dtype=np.uint8)   # #F3F3CF
 QR_MOD    = 5
 THRESHOLD = 120
 
