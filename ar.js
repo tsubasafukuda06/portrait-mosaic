@@ -437,10 +437,11 @@ function spawnHoshiShinichi() {
     const holdDur    = 700;
     const fadeDur    = 1200;
 
-    el.object3D.position.set(x, y, startZ);
+    el.setAttribute('position', `${x} ${y} ${startZ}`);
     target.appendChild(el);
 
     el.addEventListener('model-loaded', () => {
+      setDebug(`model loaded: ${def.path}`);
       let t0 = null;
 
       function animFall(now) {
