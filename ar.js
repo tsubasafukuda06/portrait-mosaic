@@ -423,7 +423,7 @@ function createDissolveMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
       uDissolve: { value: 0.0 },
-      uOpacity:  { value: 0.5 },
+      uOpacity:  { value: 0.7 },
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -444,17 +444,12 @@ function createDissolveMaterial() {
 
         vec3 n = normalize(vNormal);
 
-        // ピンク・グリーン・イエローの3色グラデーション
-        vec3 cPink   = vec3(1.00, 0.35, 0.75);
-        vec3 cGreen  = vec3(0.20, 1.00, 0.20);
-        vec3 cYellow = vec3(1.00, 1.00, 0.25);
+        // #BDFF33 → #6FFDF4 のグラデーション
+        vec3 cA = vec3(0.741, 1.000, 0.200);  // #BDFF33
+        vec3 cB = vec3(0.435, 0.992, 0.957);  // #6FFDF4
 
-        // X法線でピンク↔グリーンをブレンド
-        vec3 base = mix(cPink, cGreen, n.x * 0.5 + 0.5);
-
-        // 上方向の法線でイエローのハイライトを加算
-        float hl = pow(max(dot(n, normalize(vec3(-0.3, 1.0, 0.8))), 0.0), 2.5);
-        vec3 color = mix(base, cYellow, hl * 0.8);
+        // X法線でA↔Bをブレンド（回転で変化）
+        vec3 color = mix(cA, cB, n.x * 0.5 + 0.5);
 
         // ソフトな拡散照明
         float diff = max(dot(n, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.4 + 0.6;
