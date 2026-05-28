@@ -22,19 +22,6 @@ const ZONES = [
 const ORIGIN_CX = CANVAS_W * 0.50;
 const ORIGIN_CY = CANVAS_H * 0.40;
 
-// 9ゾーンそれぞれのアニメーション目的地（canvas座標）
-// 画面を3×3に分割、タップしたゾーンに対応する顔の部位へ移動
-const ZONE_TARGETS = [
-  [CANVAS_W * 0.25, CANVAS_H * 0.15],  // 0: 左上  → 顔の左上
-  [CANVAS_W * 0.50, CANVAS_H * 0.15],  // 1: 上中  → 顔の上中央（髪）
-  [CANVAS_W * 0.75, CANVAS_H * 0.15],  // 2: 右上  → 顔の右上
-  [CANVAS_W * 0.15, CANVAS_H * 0.42],  // 3: 左中  → 左耳あたり
-  [CANVAS_W * 0.50, CANVAS_H * 0.42],  // 4: 中央  → 顔の中心
-  [CANVAS_W * 0.85, CANVAS_H * 0.42],  // 5: 右中  → 右耳あたり
-  [CANVAS_W * 0.25, CANVAS_H * 0.75],  // 6: 左下  → 顎の左
-  [CANVAS_W * 0.50, CANVAS_H * 0.80],  // 7: 下中  → 顎の中央
-  [CANVAS_W * 0.75, CANVAS_H * 0.75],  // 8: 右下  → 顎の右
-];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let isTracking    = false;
@@ -45,7 +32,6 @@ let faceCtx       = null;
 let srcPixels     = null;
 let srcW = 0, srcH = 0;
 let texture       = null;
-let animFrame     = null;
 let isPlayingWink = false;
 
 // キラキラ エフェクト
@@ -57,54 +43,6 @@ const zoneFlashes = [];
 let overlayCanvas = null;
 let overlayCtx    = null;
 
-// ゾーン中心（アニメーション用）
-let dynCX = ORIGIN_CX;
-let dynCY = ORIGIN_CY;
-
-// アニメーション
-let animPhase    = 'idle';   // 'out' | 'back'
-let animT        = 0;
-let animFromCX   = ORIGIN_CX;
-let animFromCY   = ORIGIN_CY;
-let animToCX     = ORIGIN_CX;
-let animToCY     = ORIGIN_CY;
-
-// ── イージング ────────────────────────────────────────────────────────────────
-function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
-function lerp(a, b, t) { return a + (b - a) * t; }
-
-// ── ゾーン中心アニメーション トリガー ─────────────────────────────────────────
-function triggerAnim(zone) {
-  const [cx, cy] = ZONE_TARGETS[zone];
-  animToCX   = cx;
-  animToCY   = cy;
-  animFromCX = dynCX;
-  animFromCY = dynCY;
-  animPhase  = 'out';
-  animT      = 0;
-}
-
-function updateAnim() {
-  if (animPhase === 'idle') return false;
-
-  animT = Math.min(animT + 0.05, 1);
-
-  if (animPhase === 'out') {
-    dynCX = lerp(animFromCX, animToCX, easeInOut(animT));
-    dynCY = lerp(animFromCY, animToCY, easeInOut(animT));
-    if (animT >= 1) { animT = 0; animPhase = 'back'; }
-  } else {
-    dynCX = lerp(animToCX, ORIGIN_CX, easeInOut(animT));
-    dynCY = lerp(animToCY, ORIGIN_CY, easeInOut(animT));
-    if (animT >= 1) {
-      dynCX = ORIGIN_CX;
-      dynCY = ORIGIN_CY;
-      animPhase = 'idle';
-      return false;
-    }
-  }
-  return true;
-}
 
 // ── モザイク描画（動的中心対応）─────────────────────────────────────────────
 function sampleBright(cx, cy) {
@@ -129,15 +67,15 @@ function redrawMosaic() {
       const y   = r * QR_MOD;
       const cx_ = x + QR_MOD / 2;
       const cy_ = y + QR_MOD / 2;
-      const d   = Math.max(Math.abs(cx_ - dynCX), Math.abs(cy_ - dynCY));
+      const d   = Math.max(Math.abs(cx_ - ORIGIN_CX), Math.abs(cy_ - ORIGIN_CY));
       const S   = ZONES.find(z => d < z[0])[1];
 
       if (x % S !== 0 || y % S !== 0) {
         // ゾーン境界ギャップ補填：代表タイルが別ゾーンなら個別に描画
         const tx  = Math.floor(x / S) * S;
         const ty  = Math.floor(y / S) * S;
-        const td  = Math.max(Math.abs(tx + QR_MOD / 2 - dynCX),
-                             Math.abs(ty + QR_MOD / 2 - dynCY));
+        const td  = Math.max(Math.abs(tx + QR_MOD / 2 - ORIGIN_CX),
+                             Math.abs(ty + QR_MOD / 2 - ORIGIN_CY));
         const tS  = ZONES.find(z => td < z[0])[1];
         if (tS !== S) {
           if (sampleBright(cx_, cy_) < THRESHOLD) {
@@ -574,14 +512,7 @@ document.addEventListener('click', (e) => {
   ensureOverlayLoop();
   if (zone === 3) { playZone3Sound(); spawnHoshiShinichi(); }
 
-  if (zone === 5) {
-    // 中央右 → ウィンク動画
-    playWink();
-  } else {
-    // その他 → モザイクアニメーション
-    triggerAnim(zone);
-    ensureLoop();
-  }
+  if (zone === 5) playWink();
 });
 
 // ── AR イベント ───────────────────────────────────────────────────────────────
