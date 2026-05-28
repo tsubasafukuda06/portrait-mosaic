@@ -448,8 +448,10 @@ function createDissolveMaterial() {
         vec3 cA = vec3(0.741, 1.000, 0.200);  // #BDFF33
         vec3 cB = vec3(0.435, 0.992, 0.957);  // #6FFDF4
 
-        // X法線でA↔Bをブレンド（回転で変化）
-        vec3 color = mix(cA, cB, n.x * 0.5 + 0.5);
+        // X・Y両軸を使って回転のどの角度でも色変化が出るようにする
+        float t = (n.x + n.y) * 0.5 + 0.5;
+        t = clamp(pow(t, 0.6), 0.0, 1.0);  // コントラスト強調
+        vec3 color = mix(cA, cB, t);
 
         // ソフトな拡散照明
         float diff = max(dot(n, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.4 + 0.6;
