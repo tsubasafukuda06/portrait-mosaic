@@ -62,7 +62,7 @@ function drawFGTile(x, y, S) {
   faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
   faceCtx.fillRect(x, y, S, S);
   // BGカラーの小さな正方形をランダム位置に配置
-  const dotS   = Math.max(2, Math.floor(S * 0.30));
+  const dotS   = 2;  // 最小タイル基準で固定
   const margin = Math.max(1, Math.floor(S * 0.12));
   const range  = S - dotS - margin * 2;
   if (range > 0) {
