@@ -405,9 +405,9 @@ function spawnFloatingText() {
 
 // ── 星新一 3D GLBキャラクター ─────────────────────────────────────────────────
 const HOSHI_CHARS = [
-  { path: '3d/hoshi.glb', xOffset: -0.22 },
-  { path: '3d/shin.glb',  xOffset:  0.00 },
-  { path: '3d/ichi.glb',  xOffset:  0.22 },
+  { src: '#hoshi-model', xOffset: -0.22 },
+  { src: '#shin-model',  xOffset:  0.00 },
+  { src: '#ichi-model',  xOffset:  0.22 },
 ];
 
 function spawnHoshiShinichi() {
@@ -423,7 +423,7 @@ function spawnHoshiShinichi() {
 
   HOSHI_CHARS.forEach((def, i) => {
     const el = document.createElement('a-entity');
-    el.setAttribute('gltf-model', `url(${def.path})`);
+    el.setAttribute('gltf-model', def.src);
     el.setAttribute('scale', '0.01 0.01 0.01');
 
     const x      = baseX + def.xOffset;
