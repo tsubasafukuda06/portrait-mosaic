@@ -451,14 +451,18 @@ function createDissolveMaterial() {
 
         vec3 n = normalize(vNormal);
 
-        // #BDFF33 → #6FFDF4 のグラデーション
-        vec3 cA = vec3(0.988, 0.153, 0.180);  // #FC272E
-        vec3 cB = vec3(0.137, 0.878, 0.961);  // #23E0F5
+        // 4色グラデーション
+        vec3 cA = vec3(0.969, 0.667, 0.133);  // #F7AA22
+        vec3 cB = vec3(0.051, 0.494, 0.263);  // #0D7E43
+        vec3 cC = vec3(0.282, 0.808, 0.898);  // #48CEE5
+        vec3 cD = vec3(0.855, 0.118, 0.224);  // #DA1E39
 
-        // X・Y両軸を使って回転のどの角度でも色変化が出るようにする
-        float t = (n.x + n.y) * 0.5 + 0.5;
-        t = clamp(pow(t, 0.6), 0.0, 1.0);  // コントラスト強調
-        vec3 color = mix(cA, cB, t);
+        float t = clamp((n.x + n.y) * 0.5 + 0.5, 0.0, 1.0);
+        float s = t * 3.0;
+        vec3 color;
+        if      (s < 1.0) color = mix(cA, cB, s);
+        else if (s < 2.0) color = mix(cB, cC, s - 1.0);
+        else              color = mix(cC, cD, s - 2.0);
 
         // ソフトな拡散照明
         float diff = max(dot(n, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.4 + 0.6;
