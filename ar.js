@@ -271,7 +271,7 @@ function drawOverlay() {
     s.alpha -= 0.025;
     if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
     overlayCtx.globalAlpha = s.alpha;
-    overlayCtx.fillStyle   = '#03FF00';
+    overlayCtx.fillStyle   = '#FF0CBA';
     overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
 
@@ -422,7 +422,7 @@ function createIchiObject() {
 function createDissolveMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
-      uColor:    { value: new THREE.Color(0x0364ff) },
+      uColor:    { value: new THREE.Color(0x03ff00) },
       uDissolve: { value: 0.0 },
       uOpacity:  { value: 0.5 },
     },
