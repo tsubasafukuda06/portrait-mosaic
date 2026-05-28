@@ -418,6 +418,34 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   requestAnimationFrame(animFall);
 }
 
+// ── 「一」Three.js 直接生成 ───────────────────────────────────────────────────
+// ichi.glb は横一画のため奥行きがほぼゼロ → ExtrudeGeometry で立体化
+function createIchiObject() {
+  const shape = new THREE.Shape();
+  const W = 0.75;   // 半幅
+  const H = 0.13;   // 半高さ
+  // 書道風：両端をわずかに細くする
+  shape.moveTo(-W,        -H * 0.65);
+  shape.lineTo(-W * 0.88, -H);
+  shape.lineTo( W * 0.88, -H);
+  shape.lineTo( W,        -H * 0.65);
+  shape.lineTo( W,         H * 0.65);
+  shape.lineTo( W * 0.88,  H);
+  shape.lineTo(-W * 0.88,  H);
+  shape.lineTo(-W,         H * 0.65);
+  shape.closePath();
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth:          0.32,
+    bevelEnabled:   true,
+    bevelThickness: 0.055,
+    bevelSize:      0.05,
+    bevelSegments:  4,
+  });
+  geo.center();
+  return new THREE.Mesh(geo, createCharMaterial());
+}
+
 // 単色MeshStandardMaterial（照明で陰影・立体感を出す）
 function createCharMaterial() {
   return new THREE.MeshStandardMaterial({
@@ -434,38 +462,43 @@ function spawnHoshiShinichi() {
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
 
+  // obj を受け取ってスケール・配置・アニメーションを行う共通処理
+  const place = (obj, i) => {
+    const box    = new THREE.Box3().setFromObject(obj);
+    const size   = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const s      = 0.25 / maxDim;
+    obj.scale.setScalar(s);
+
+    const center = box.getCenter(new THREE.Vector3());
+    obj.position.sub(center.multiplyScalar(s));
+
+    const x      = (Math.random() - 0.5) * 0.9;
+    const y      = (Math.random() - 0.5) * 1.2;
+    const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
+    const rotDir = (Math.random() > 0.5 ? 1 : -1);
+    const rotSpd = 0.015 + Math.random() * 0.015;
+
+    obj.position.set(x, y, startZ);
+    target.object3D.add(obj);
+    setDebug('s=' + s.toFixed(4) + ' size=' + maxDim.toFixed(2));
+    animateGLB(obj, target, startZ, rotDir, rotSpd, i, s);
+  };
+
   HOSHI_CHARS.forEach((def, i) => {
+    // 「一」はGLBが平坦なためThree.jsで直接生成
+    if (def.path === '3d/ichi.glb') {
+      place(createIchiObject(), i);
+      return;
+    }
+
     loadGLB(def.path, scene => {
       const obj = scene.clone(true);
       const mat = createCharMaterial();
-
       obj.traverse(child => {
         if (child.isMesh) child.material = mat;
       });
-
-      // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
-      const box     = new THREE.Box3().setFromObject(obj);
-      const size    = box.getSize(new THREE.Vector3());
-      const maxDim  = Math.max(size.x, size.y, size.z) || 1;
-      const s       = 0.25 / maxDim;
-      obj.scale.setScalar(s);
-
-      // 重心を原点に合わせる
-      const center = box.getCenter(new THREE.Vector3());
-      obj.position.sub(center.multiplyScalar(s));
-
-      // 各文字で完全に独立したランダム位置
-      const x      = (Math.random() - 0.5) * 0.9;
-      const y      = (Math.random() - 0.5) * 1.2;
-      const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
-      const rotDir = (Math.random() > 0.5 ? 1 : -1);
-      const rotSpd = 0.015 + Math.random() * 0.015;
-
-      obj.position.set(x, y, startZ);
-      target.object3D.add(obj);
-      setDebug('s=' + s.toFixed(4) + ' size=' + maxDim.toFixed(2));
-
-      animateGLB(obj, target, startZ, rotDir, rotSpd, i, s);
+      place(obj, i);
     });
   });
 }
