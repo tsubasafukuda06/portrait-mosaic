@@ -398,8 +398,100 @@ function makeTextCanvas(label, color) {
 }
 
 function spawnFloatingText() {
-  const label  = TAP_LABELS[tapCount % 2];
+  const label = TAP_LABELS[tapCount % 2];
   tapCount++;
+  if (label === '星新一') { spawnHoshiShinichi(); } else { spawnCanvasText(label); }
+}
+
+// ── 星新一 3D GLBキャラクター ─────────────────────────────────────────────────
+const HOSHI_CHARS = [
+  { path: '3d/hoshi.glb', xOffset: -0.22 },
+  { path: '3d/shin.glb',  xOffset:  0.00 },
+  { path: '3d/ichi.glb',  xOffset:  0.22 },
+];
+
+function spawnHoshiShinichi() {
+  const target = document.getElementById('ar-target');
+  if (!target) return;
+
+  const baseX  = (Math.random() - 0.5) * 0.3;
+  const baseY  = (Math.random() - 0.5) * 0.8;
+  const floorZ = 0.02;
+
+  function easeInQuart(t) { return t * t * t * t; }
+  function easeOutQuad(t)  { return t * (2 - t); }
+
+  HOSHI_CHARS.forEach((def, i) => {
+    const el = document.createElement('a-entity');
+    el.setAttribute('gltf-model', `url(${def.path})`);
+    el.setAttribute('scale', '0.01 0.01 0.01');
+
+    const x      = baseX + def.xOffset;
+    const y      = baseY;
+    const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
+    const rotDir = (Math.random() > 0.5 ? 1 : -1);
+    const rotSpd = 0.015 + Math.random() * 0.015;
+    const fallDur    = 750 + i * 60;
+    const squishDur  = 100;
+    const unsquishDur = 200;
+    const holdDur    = 700;
+    const fadeDur    = 1200;
+
+    el.object3D.position.set(x, y, startZ);
+    target.appendChild(el);
+
+    el.addEventListener('model-loaded', () => {
+      let t0 = null;
+
+      function animFall(now) {
+        if (!t0) t0 = now;
+        const t = Math.min((now - t0) / fallDur, 1);
+        el.object3D.position.z = startZ + (floorZ - startZ) * easeInQuart(t);
+        el.object3D.rotation.y += rotSpd * rotDir;
+        if (t < 1) { requestAnimationFrame(animFall); }
+        else { t0 = null; requestAnimationFrame(animSquish); }
+      }
+
+      function animSquish(now) {
+        if (!t0) t0 = now;
+        const t = Math.min((now - t0) / squishDur, 1);
+        el.object3D.scale.set(0.01 * (1 + 0.3 * t), 0.01 * (1 - 0.4 * t), 0.01);
+        if (t < 1) { requestAnimationFrame(animSquish); }
+        else { t0 = null; requestAnimationFrame(animUnsquish); }
+      }
+
+      function animUnsquish(now) {
+        if (!t0) t0 = now;
+        const t = Math.min((now - t0) / unsquishDur, 1);
+        const e = easeOutQuad(t);
+        el.object3D.scale.set(0.01 * (1.3 - 0.3 * e), 0.01 * (0.6 + 0.4 * e), 0.01);
+        if (t < 1) { requestAnimationFrame(animUnsquish); }
+        else {
+          el.object3D.scale.set(0.01, 0.01, 0.01);
+          setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur);
+        }
+      }
+
+      function animFade(now) {
+        if (!t0) t0 = now;
+        const t = Math.min((now - t0) / fadeDur, 1);
+        el.object3D.traverse(child => {
+          if (child.isMesh && child.material) {
+            child.material.transparent = true;
+            child.material.opacity     = 1 - t;
+          }
+        });
+        if (t < 1) { requestAnimationFrame(animFade); }
+        else { target.removeChild(el); }
+      }
+
+      requestAnimationFrame(animFall);
+    });
+  });
+}
+
+// ── ショートショート キャンバステキスト ───────────────────────────────────────
+function spawnCanvasText(label) {
 
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
