@@ -483,9 +483,23 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   requestAnimationFrame(animFall);
 }
 
+// PBR用ライト（初回のみ追加）
+let glbLightsAdded = false;
+function ensureGLBLights(target) {
+  if (glbLightsAdded) return;
+  glbLightsAdded = true;
+  const ambient = new THREE.AmbientLight(0xffffff, 2.5);
+  const dir     = new THREE.DirectionalLight(0xffffff, 1.5);
+  dir.position.set(0.5, 1, 1);
+  target.object3D.add(ambient);
+  target.object3D.add(dir);
+}
+
 function spawnHoshiShinichi() {
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
+
+  ensureGLBLights(target);
 
   const baseX = (Math.random() - 0.5) * 0.3;
   const baseY = (Math.random() - 0.5) * 0.8;
@@ -493,16 +507,6 @@ function spawnHoshiShinichi() {
   HOSHI_CHARS.forEach((def, i) => {
     loadGLB(def.path, scene => {
       const obj = scene.clone(true);
-
-      // PBRマテリアル → MeshBasicMaterialに変換（ライト不要、Blenderの色を保持）
-      obj.traverse(child => {
-        if (child.isMesh && child.material) {
-          const color = child.material.color
-            ? child.material.color.clone()
-            : new THREE.Color(0x3B8ADE);
-          child.material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-        }
-      });
 
       // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
       const box     = new THREE.Box3().setFromObject(obj);
