@@ -516,6 +516,8 @@ function createTriToneShader() {
         if      (n.y > 0.5)  color = colTop;
         else if (n.x < -0.5) color = colGreen;
         else                  color = colGray;
+        // sRGBガンマ補正（ShaderMaterialはカラー管理が自動適用されないため）
+        color = pow(color, vec3(0.4545));
         gl_FragColor = vec4(color, opacity);
       }
     `,
