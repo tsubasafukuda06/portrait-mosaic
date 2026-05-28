@@ -556,7 +556,7 @@ document.addEventListener('click', (e) => {
 
   spawnZoneFlash(zone);
   ensureOverlayLoop();
-  spawnHoshiShinichi();
+  if (zone === 3) spawnHoshiShinichi();
 
   if (zone === 5) {
     // 中央右 → ウィンク動画
