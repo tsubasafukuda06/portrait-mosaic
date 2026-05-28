@@ -405,88 +405,104 @@ function spawnFloatingText() {
 
 // ── 星新一 3D GLBキャラクター ─────────────────────────────────────────────────
 const HOSHI_CHARS = [
-  { src: '#hoshi-model', xOffset: -0.22 },
-  { src: '#shin-model',  xOffset:  0.00 },
-  { src: '#ichi-model',  xOffset:  0.22 },
+  { path: '3d/hoshi.glb', xOffset: -0.22 },
+  { path: '3d/shin.glb',  xOffset:  0.00 },
+  { path: '3d/ichi.glb',  xOffset:  0.22 },
 ];
 
-function spawnHoshiShinichi() {
-  const target = document.getElementById('ar-target');
-  if (!target) return;
+// GLBキャッシュ（ロード済みシーンを保持）
+const glbCache = {};
 
-  const baseX  = (Math.random() - 0.5) * 0.3;
-  const baseY  = (Math.random() - 0.5) * 0.8;
-  const floorZ = 0.02;
+function loadGLB(path, cb) {
+  if (glbCache[path]) { cb(glbCache[path]); return; }
+  if (!THREE.GLTFLoader) { setDebug('GLTFLoader unavailable'); return; }
+  const loader = new THREE.GLTFLoader();
+  loader.load(path, gltf => {
+    glbCache[path] = gltf.scene;
+    cb(gltf.scene);
+  }, undefined, err => setDebug('GLB error: ' + err.message));
+}
+
+function animateGLB(obj, target, startZ, rotDir, rotSpd, i) {
+  const floorZ     = 0.02;
+  const fallDur    = 750 + i * 60;
+  const squishDur  = 100;
+  const unsquishDur = 200;
+  const holdDur    = 700;
+  const fadeDur    = 1200;
+  const S          = 0.01;
 
   function easeInQuart(t) { return t * t * t * t; }
   function easeOutQuad(t)  { return t * (2 - t); }
 
+  let t0 = null;
+
+  function animFall(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / fallDur, 1);
+    obj.position.z = startZ + (floorZ - startZ) * easeInQuart(t);
+    obj.rotation.y += rotSpd * rotDir;
+    if (t < 1) { requestAnimationFrame(animFall); }
+    else { t0 = null; requestAnimationFrame(animSquish); }
+  }
+
+  function animSquish(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / squishDur, 1);
+    obj.scale.set(S * (1 + 0.3 * t), S * (1 - 0.4 * t), S);
+    if (t < 1) { requestAnimationFrame(animSquish); }
+    else { t0 = null; requestAnimationFrame(animUnsquish); }
+  }
+
+  function animUnsquish(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / unsquishDur, 1);
+    const e = easeOutQuad(t);
+    obj.scale.set(S * (1.3 - 0.3 * e), S * (0.6 + 0.4 * e), S);
+    if (t < 1) { requestAnimationFrame(animUnsquish); }
+    else {
+      obj.scale.set(S, S, S);
+      setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur);
+    }
+  }
+
+  function animFade(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / fadeDur, 1);
+    obj.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.material.transparent = true;
+        child.material.opacity     = 1 - t;
+      }
+    });
+    if (t < 1) { requestAnimationFrame(animFade); }
+    else { target.object3D.remove(obj); }
+  }
+
+  requestAnimationFrame(animFall);
+}
+
+function spawnHoshiShinichi() {
+  const target = document.getElementById('ar-target');
+  if (!target || !target.object3D) return;
+
+  const baseX = (Math.random() - 0.5) * 0.3;
+  const baseY = (Math.random() - 0.5) * 0.8;
+
   HOSHI_CHARS.forEach((def, i) => {
-    const el = document.createElement('a-entity');
-    el.setAttribute('gltf-model', def.src);
-    el.setAttribute('scale', '0.01 0.01 0.01');
+    loadGLB(def.path, scene => {
+      const obj    = scene.clone(true);
+      const x      = baseX + def.xOffset;
+      const y      = baseY;
+      const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
+      const rotDir = (Math.random() > 0.5 ? 1 : -1);
+      const rotSpd = 0.015 + Math.random() * 0.015;
 
-    const x      = baseX + def.xOffset;
-    const y      = baseY;
-    const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
-    const rotDir = (Math.random() > 0.5 ? 1 : -1);
-    const rotSpd = 0.015 + Math.random() * 0.015;
-    const fallDur    = 750 + i * 60;
-    const squishDur  = 100;
-    const unsquishDur = 200;
-    const holdDur    = 700;
-    const fadeDur    = 1200;
+      obj.scale.set(0.01, 0.01, 0.01);
+      obj.position.set(x, y, startZ);
+      target.object3D.add(obj);
 
-    el.setAttribute('position', `${x} ${y} ${startZ}`);
-    target.appendChild(el);
-
-    el.addEventListener('model-loaded', () => {
-      setDebug(`model loaded: ${def.path}`);
-      let t0 = null;
-
-      function animFall(now) {
-        if (!t0) t0 = now;
-        const t = Math.min((now - t0) / fallDur, 1);
-        el.object3D.position.z = startZ + (floorZ - startZ) * easeInQuart(t);
-        el.object3D.rotation.y += rotSpd * rotDir;
-        if (t < 1) { requestAnimationFrame(animFall); }
-        else { t0 = null; requestAnimationFrame(animSquish); }
-      }
-
-      function animSquish(now) {
-        if (!t0) t0 = now;
-        const t = Math.min((now - t0) / squishDur, 1);
-        el.object3D.scale.set(0.01 * (1 + 0.3 * t), 0.01 * (1 - 0.4 * t), 0.01);
-        if (t < 1) { requestAnimationFrame(animSquish); }
-        else { t0 = null; requestAnimationFrame(animUnsquish); }
-      }
-
-      function animUnsquish(now) {
-        if (!t0) t0 = now;
-        const t = Math.min((now - t0) / unsquishDur, 1);
-        const e = easeOutQuad(t);
-        el.object3D.scale.set(0.01 * (1.3 - 0.3 * e), 0.01 * (0.6 + 0.4 * e), 0.01);
-        if (t < 1) { requestAnimationFrame(animUnsquish); }
-        else {
-          el.object3D.scale.set(0.01, 0.01, 0.01);
-          setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur);
-        }
-      }
-
-      function animFade(now) {
-        if (!t0) t0 = now;
-        const t = Math.min((now - t0) / fadeDur, 1);
-        el.object3D.traverse(child => {
-          if (child.isMesh && child.material) {
-            child.material.transparent = true;
-            child.material.opacity     = 1 - t;
-          }
-        });
-        if (t < 1) { requestAnimationFrame(animFade); }
-        else { target.removeChild(el); }
-      }
-
-      requestAnimationFrame(animFall);
+      animateGLB(obj, target, startZ, rotDir, rotSpd, i);
     });
   });
 }
