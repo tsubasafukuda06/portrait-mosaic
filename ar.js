@@ -422,7 +422,6 @@ function createIchiObject() {
 function createDissolveMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
-      uColor:    { value: new THREE.Color(0x03ff00) },
       uDissolve: { value: 0.0 },
       uOpacity:  { value: 0.5 },
     },
@@ -434,7 +433,6 @@ function createDissolveMaterial() {
       }
     `,
     fragmentShader: `
-      uniform vec3  uColor;
       uniform float uDissolve;
       uniform float uOpacity;
       varying vec3  vNormal;
@@ -442,11 +440,25 @@ function createDissolveMaterial() {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
       }
       void main() {
-        // QR_MOD(5px)に合わせたブロック単位でランダム消去
         if (hash(floor(gl_FragCoord.xy / 5.0)) < uDissolve) discard;
-        // ランバート拡散（ライトはar.jsで追加済みの方向に合わせる）
-        float diff = max(dot(vNormal, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.6 + 0.4;
-        gl_FragColor = vec4(uColor * diff, uOpacity);
+
+        vec3 n = normalize(vNormal);
+
+        // ピンク・グリーン・イエローの3色グラデーション
+        vec3 cPink   = vec3(1.00, 0.35, 0.75);
+        vec3 cGreen  = vec3(0.20, 1.00, 0.20);
+        vec3 cYellow = vec3(1.00, 1.00, 0.25);
+
+        // X法線でピンク↔グリーンをブレンド
+        vec3 base = mix(cPink, cGreen, n.x * 0.5 + 0.5);
+
+        // 上方向の法線でイエローのハイライトを加算
+        float hl = pow(max(dot(n, normalize(vec3(-0.3, 1.0, 0.8))), 0.0), 2.5);
+        vec3 color = mix(base, cYellow, hl * 0.8);
+
+        // ソフトな拡散照明
+        float diff = max(dot(n, normalize(vec3(1.0, 3.0, 2.0))), 0.0) * 0.4 + 0.6;
+        gl_FragColor = vec4(color * diff, uOpacity);
       }
     `,
     side:        THREE.DoubleSide,
