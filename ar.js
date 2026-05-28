@@ -416,8 +416,10 @@ const glbCache = {};
 function loadGLB(path, cb) {
   if (glbCache[path]) { cb(glbCache[path]); return; }
   if (!THREE.GLTFLoader) { setDebug('GLTFLoader unavailable'); return; }
+  setDebug('loading: ' + path);
   const loader = new THREE.GLTFLoader();
   loader.load(path, gltf => {
+    setDebug('loaded: ' + path);
     glbCache[path] = gltf.scene;
     cb(gltf.scene);
   }, undefined, err => setDebug('GLB error: ' + err.message));
@@ -501,6 +503,7 @@ function spawnHoshiShinichi() {
       obj.scale.set(0.01, 0.01, 0.01);
       obj.position.set(x, y, startZ);
       target.object3D.add(obj);
+      setDebug('added obj ' + i + ' children:' + target.object3D.children.length);
 
       animateGLB(obj, target, startZ, rotDir, rotSpd, i);
     });
