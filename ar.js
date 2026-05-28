@@ -1,8 +1,8 @@
 'use strict';
 
 // ── Mosaic config ─────────────────────────────────────────────────────────────
-const FG        = [59, 138, 222];
-const BG        = [255, 255, 255];
+const FG        = [16, 227, 212];
+const BG        = [251, 244, 214];
 const QR_MOD    = 5;
 const THRESHOLD = 120;
 
@@ -422,7 +422,7 @@ function createIchiObject() {
 function createDissolveMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
-      uColor:    { value: new THREE.Color(0xa1d7d7) },
+      uColor:    { value: new THREE.Color(0x0364ff) },
       uDissolve: { value: 0.0 },
     },
     vertexShader: `
