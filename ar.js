@@ -425,14 +425,13 @@ function loadGLB(path, cb) {
   }, undefined, err => setDebug('GLB error: ' + err.message));
 }
 
-function animateGLB(obj, target, startZ, rotDir, rotSpd, i) {
+function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   const floorZ     = 0.02;
   const fallDur    = 750 + i * 60;
   const squishDur  = 100;
   const unsquishDur = 200;
   const holdDur    = 700;
   const fadeDur    = 1200;
-  const S          = 0.01;
 
   function easeInQuart(t) { return t * t * t * t; }
   function easeOutQuad(t)  { return t * (2 - t); }
@@ -493,19 +492,30 @@ function spawnHoshiShinichi() {
 
   HOSHI_CHARS.forEach((def, i) => {
     loadGLB(def.path, scene => {
-      const obj    = scene.clone(true);
+      const obj = scene.clone(true);
+
+      // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
+      const box     = new THREE.Box3().setFromObject(obj);
+      const size    = box.getSize(new THREE.Vector3());
+      const maxDim  = Math.max(size.x, size.y, size.z) || 1;
+      const s       = 0.25 / maxDim;
+      obj.scale.setScalar(s);
+
+      // 重心を原点に合わせる
+      const center = box.getCenter(new THREE.Vector3());
+      obj.position.sub(center.multiplyScalar(s));
+
       const x      = baseX + def.xOffset;
       const y      = baseY;
       const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
       const rotDir = (Math.random() > 0.5 ? 1 : -1);
       const rotSpd = 0.015 + Math.random() * 0.015;
 
-      obj.scale.set(0.01, 0.01, 0.01);
       obj.position.set(x, y, startZ);
       target.object3D.add(obj);
-      setDebug('added obj ' + i + ' children:' + target.object3D.children.length);
+      setDebug('s=' + s.toFixed(4) + ' size=' + maxDim.toFixed(2));
 
-      animateGLB(obj, target, startZ, rotDir, rotSpd, i);
+      animateGLB(obj, target, startZ, rotDir, rotSpd, i, s);
     });
   });
 }
