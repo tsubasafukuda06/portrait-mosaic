@@ -115,8 +115,7 @@ function sampleBright(cx, cy) {
 }
 
 function redrawMosaic() {
-  faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
-  faceCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  faceCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   const cols = Math.ceil(CANVAS_W / QR_MOD);
   const rows = Math.ceil(CANVAS_H / QR_MOD);
@@ -433,8 +432,7 @@ function initFaceCanvas() {
   faceCanvas.height = CANVAS_H;
   faceCtx           = faceCanvas.getContext('2d');
 
-  faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
-  faceCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  faceCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   const img = new Image();
   img.onload = () => {
