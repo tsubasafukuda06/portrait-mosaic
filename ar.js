@@ -360,7 +360,7 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   const floorZ     = 0.02;
   const fallDur    = 750 + i * 60;
   const holdDur    = 700;
-  const fadeDur    = 1200;
+  const fadeDur    = 3000;
 
   function easeInQuart(t) { return t * t * t * t; }
 
@@ -427,8 +427,10 @@ function createDissolveMaterial() {
     },
     vertexShader: `
       varying vec3 vNormal;
+      varying vec3 vLocalPos;
       void main() {
-        vNormal = normalize(normalMatrix * normal);
+        vNormal    = normalize(normalMatrix * normal);
+        vLocalPos  = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
@@ -436,11 +438,16 @@ function createDissolveMaterial() {
       uniform float uDissolve;
       uniform float uOpacity;
       varying vec3  vNormal;
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      varying vec3  vLocalPos;
+      float hash3(vec3 p) {
+        p = fract(p * vec3(127.1, 311.7, 74.7));
+        p += dot(p, p.yxz + 19.19);
+        return fract((p.x + p.y) * p.z);
       }
       void main() {
-        if (hash(floor(gl_FragCoord.xy / 5.0)) < uDissolve) discard;
+        // 3Dローカル座標でチャンクを決め、一つずつ消えていく
+        vec3 chunk = floor(vLocalPos * 5.0);
+        if (hash3(chunk) < uDissolve) discard;
 
         vec3 n = normalize(vNormal);
 
