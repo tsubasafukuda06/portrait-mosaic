@@ -494,6 +494,16 @@ function spawnHoshiShinichi() {
     loadGLB(def.path, scene => {
       const obj = scene.clone(true);
 
+      // PBRマテリアル → MeshBasicMaterialに変換（ライト不要、Blenderの色を保持）
+      obj.traverse(child => {
+        if (child.isMesh && child.material) {
+          const color = child.material.color
+            ? child.material.color.clone()
+            : new THREE.Color(0x3B8ADE);
+          child.material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+        }
+      });
+
       // バウンディングボックスで自動スケール（1文字を約0.25単位に収める）
       const box     = new THREE.Box3().setFromObject(obj);
       const size    = box.getSize(new THREE.Vector3());
