@@ -271,7 +271,7 @@ function drawOverlay() {
     s.alpha -= 0.025;
     if (s.alpha <= 0) { sparkles.splice(i, 1); continue; }
     overlayCtx.globalAlpha = s.alpha;
-    overlayCtx.fillStyle   = '#FFCB00';
+    overlayCtx.fillStyle   = '#FF00D3';
     overlayCtx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
 
