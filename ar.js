@@ -360,7 +360,7 @@ function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   const floorZ     = 0.02;
   const fallDur    = 750 + i * 60;
   const holdDur    = 700;
-  const fadeDur    = 3000;
+  const fadeDur    = 2000;
 
   function easeInQuart(t) { return t * t * t * t; }
 
