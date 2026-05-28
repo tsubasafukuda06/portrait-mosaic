@@ -505,7 +505,6 @@ function spawnHoshiShinichi() {
 
     obj.position.set(x, y, startZ);
     target.object3D.add(obj);
-    setDebug('s=' + s.toFixed(4) + ' size=' + maxDim.toFixed(2));
     animateGLB(obj, target, startZ, rotDir, rotSpd, i, s);
   };
 
