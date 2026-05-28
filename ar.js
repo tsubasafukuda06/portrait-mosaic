@@ -52,25 +52,10 @@ function sampleBright(cx, cy) {
   return srcPixels[p] * 0.299 + srcPixels[p + 1] * 0.587 + srcPixels[p + 2] * 0.114;
 }
 
-// 座標ベースの決定論的ハッシュ（再描画でブレない）
-function tileHash(x, y) {
-  return (((x * 1664525 + y * 1013904223) >>> 0) % 10000) / 10000;
-}
-
-// FGタイルをドット柄付きで描画
+// FGタイルを描画
 function drawFGTile(x, y, S) {
   faceCtx.fillStyle = `rgb(${FG[0]},${FG[1]},${FG[2]})`;
   faceCtx.fillRect(x, y, S, S);
-  // BGカラーの小さな正方形をランダム位置に配置
-  const dotS   = 2;  // 最小タイル基準で固定
-  const margin = Math.max(1, Math.floor(S * 0.12));
-  const range  = S - dotS - margin * 2;
-  if (range > 0) {
-    const dx = x + margin + Math.floor(tileHash(x, y)     * range);
-    const dy = y + margin + Math.floor(tileHash(y + 1, x) * range);
-    faceCtx.fillStyle = `rgb(${BG[0]},${BG[1]},${BG[2]})`;
-    faceCtx.fillRect(dx, dy, dotS, dotS);
-  }
 }
 
 function redrawMosaic() {
