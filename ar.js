@@ -576,6 +576,11 @@ const ZONE_CHAR_SIZES = {
   '3d/02.glb': 0.27,   // 0.45 × 0.6
 };
 
+// GLBごとの特殊挙動
+const ZONE_CHAR_CONFIG = {
+  '3d/03.glb': { float: true },  // 横向きのまま空中浮遊
+};
+
 const zoneChars    = {};
 const activeMixers = [];
 let   mixerClock   = null;
@@ -602,8 +607,14 @@ function startMixerLoop() {
       if (Math.abs(w.position.x) > BX) { c.vx *= -1; w.position.x = Math.sign(w.position.x) * BX; }
       if (Math.abs(w.position.y) > BY) { c.vy *= -1; w.position.y = Math.sign(w.position.y) * BY; }
 
-      // 進行方向に向かせる（GLB forward = +Y after Rx(π/2)、+π で後ろ向き補正）
-      w.rotation.z = Math.atan2(-c.vx, c.vy) + Math.PI;
+      if (c.float) {
+        // 浮遊：ゆっくりZ方向に揺れる、向き変更なし
+        c.phase = (c.phase || 0) + delta * 1.2;
+        w.position.z = 0.35 + Math.sin(c.phase) * 0.08;
+      } else {
+        // 歩行：進行方向に向かせる（GLB forward = +Y after Rx(π/2)、+π で後ろ向き補正）
+        w.rotation.z = Math.atan2(-c.vx, c.vy) + Math.PI;
+      }
 
       // ランダムに方向転換
       if (now > c.nextTurn) {
@@ -668,14 +679,20 @@ function spawnZoneChar(zone) {
     obj.scale.setScalar(entry.cachedScale);
 
     if (hasAnim) {
-      // ランダム位置に出現 → 歩き回る
+      const path    = ZONE_CHARS[zone];
+      const config  = ZONE_CHAR_CONFIG[path] || {};
+      const isFloat = config.float;
       const initAngle = Math.random() * Math.PI * 2;
-      const spd       = 0.08 + Math.random() * 0.07;
+      const spd       = isFloat ? 0.04 + Math.random() * 0.03   // 浮遊：ゆっくり
+                                : 0.08 + Math.random() * 0.07;  // 歩行：通常速度
 
-      // wrapper: 位置・向きを管理 / obj: 立ち姿勢の回転を固定
       const wrapper = new THREE.Object3D();
-      wrapper.position.set((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 1.2, 0.05);
-      obj.rotation.set(Math.PI / 2, 0, 0);  // Y-up → AR平面から立たせる
+      wrapper.position.set(
+        (Math.random() - 0.5) * 0.9,
+        (Math.random() - 0.5) * 1.2,
+        isFloat ? 0.3 + Math.random() * 0.2 : 0.05,  // 浮遊は高い位置
+      );
+      if (!isFloat) obj.rotation.set(Math.PI / 2, 0, 0);  // 歩行のみ立たせる
       obj.position.set(0, 0, 0);
       wrapper.add(obj);
       target.object3D.add(wrapper);
@@ -687,6 +704,8 @@ function spawnZoneChar(zone) {
         obj, wrapper, mixer,
         vx: Math.cos(initAngle) * spd,
         vy: Math.sin(initAngle) * spd,
+        float: isFloat,
+        phase: Math.random() * Math.PI * 2,
         nextTurn: Date.now() + 2000 + Math.random() * 2000,
       };
       startMixerLoop();
