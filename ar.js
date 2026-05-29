@@ -812,13 +812,25 @@ function setTexture() {
 }
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
-// 全GLBをページ読み込み時にバックグラウンドでキャッシュ
+// 全GLBをページ読み込み時にバックグラウンドでキャッシュ + cachedScale 事前計算
 (function preloadGLBs() {
+  const zoneCharPaths = new Set(Object.values(ZONE_CHARS));
   const paths = [
     ...Object.values(ZONE_CHARS),
     ...HOSHI_CHARS.filter(c => c.path !== '3d/ichi.glb').map(c => c.path),
   ];
-  paths.forEach(path => loadGLB(path, () => {}));
+  paths.forEach(path => {
+    loadGLB(path, (scene, animations) => {
+      if (!zoneCharPaths.has(path)) return;
+      const entry = glbCache[path];
+      if (entry.cachedScale) return;
+      const hasAnim  = animations && animations.length > 0;
+      const box      = new THREE.Box3().setFromObject(scene);
+      const size     = box.getSize(new THREE.Vector3());
+      const baseSize = hasAnim ? (ZONE_CHAR_SIZES[path] || 0.45) : 0.3;
+      entry.cachedScale = baseSize / (Math.max(size.x, size.y, size.z) || 1);
+    });
+  });
 })();
 
 initFaceCanvas();
@@ -853,6 +865,17 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
   const arSystem = sceneEl.systems['mindar-image-system'];
   if (!arSystem) { showError('MindARシステムが見つかりません'); return; }
+
+  // GLBシェーダー・テクスチャをGPUに事前転送（スポーン時のラグを軽減）
+  if (sceneEl.renderer) {
+    const warmupScene = new THREE.Scene();
+    const warmupAdded = [];
+    Object.values(glbCache).forEach(entry => {
+      if (entry.scene) { warmupScene.add(entry.scene); warmupAdded.push(entry.scene); }
+    });
+    sceneEl.renderer.compile(warmupScene, sceneEl.camera);
+    warmupAdded.forEach(s => warmupScene.remove(s));
+  }
 
   setTexture();
 
