@@ -571,7 +571,7 @@ function spawnZoneChar(zone) {
   const target = document.getElementById('ar-target');
   if (!target || !target.object3D) return;
 
-  // 既存キャラを削除（リスポーン）
+  // アニメ付きキャラのみ追跡・削除（リスポーン）
   if (zoneChars[zone]) {
     const old = zoneChars[zone];
     target.object3D.remove(old.obj);
@@ -584,32 +584,47 @@ function spawnZoneChar(zone) {
   }
 
   loadGLB(ZONE_CHARS[zone], (scene, animations) => {
-    // ゾーンごとに1インスタンスのみ → クローン不要、scene をそのまま使う
-    // （clone(true) はスキンメッシュのボーン参照を正しく引き継がないため）
-    const obj = scene;
+    const hasAnim = animations && animations.length > 0;
 
-    // スケール（未スケール時のbboxで算出）
-    const box    = new THREE.Box3().setFromObject(obj);
-    const size   = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    obj.scale.setScalar(0.3 / maxDim);
+    // アニメあり → スキンメッシュのためクローン不可、scene を直接使用（1インスタンス保証）
+    // アニメなし → clone(true) で複数インスタンス可（hoshi 同様に使い捨て）
+    const obj = hasAnim ? scene : scene.clone(true);
 
-    // ゾーン中心のAR平面上の座標
-    const col = zone % 3;
-    const row = Math.floor(zone / 3);
-    obj.position.set((col - 1) * 0.35, (1 - row) * 0.47, 0.05);
+    // スケール：初回のみ bbox から算出してキャッシュ（リスポーン時の巨大化を防ぐ）
+    const entry = glbCache[ZONE_CHARS[zone]];
+    if (!entry.cachedScale) {
+      if (hasAnim) obj.scale.set(1, 1, 1);  // アニメありは前回スケールをリセット
+      const box  = new THREE.Box3().setFromObject(obj);
+      const size = box.getSize(new THREE.Vector3());
+      entry.cachedScale = 0.3 / (Math.max(size.x, size.y, size.z) || 1);
+    }
+    obj.scale.setScalar(entry.cachedScale);
 
-    target.object3D.add(obj);
+    if (hasAnim) {
+      // ゾーン中心に固定配置、アニメーションループ、再タップでリスポーン
+      const col = zone % 3;
+      const row = Math.floor(zone / 3);
+      obj.position.set((col - 1) * 0.35, (1 - row) * 0.47, 0.05);
+      target.object3D.add(obj);
 
-    // AnimationMixer セットアップ
-    if (animations && animations.length > 0) {
       const mixer = new THREE.AnimationMixer(obj);
       mixer.clipAction(animations[0]).play();
       activeMixers.push(mixer);
       zoneChars[zone] = { obj, mixer };
       startMixerLoop();
     } else {
-      zoneChars[zone] = { obj, mixer: null };
+      // hoshi 同様：ランダム位置 + 落下 + ディゾルブ消滅
+      obj.traverse(child => {
+        if (child.isMesh) child.material = createDissolveMaterial();
+      });
+      const x      = (Math.random() - 0.5) * 0.9;
+      const y      = (Math.random() - 0.5) * 1.2;
+      const startZ = 0.5 + Math.random() * 0.1;
+      const rotDir = Math.random() > 0.5 ? 1 : -1;
+      const rotSpd = 0.015 + Math.random() * 0.015;
+      obj.position.set(x, y, startZ);
+      target.object3D.add(obj);
+      animateGLB(obj, target, startZ, rotDir, rotSpd, 0, entry.cachedScale);
     }
   });
 }
