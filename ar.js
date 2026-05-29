@@ -722,6 +722,34 @@ function spawnZoneChar(zone) {
         nextTurn: Date.now() + 2000 + Math.random() * 2000,
       };
       startMixerLoop();
+
+      // 浮遊キャラは2秒後にフェードアウト
+      if (isFloat) {
+        const thisWrapper = wrapper;
+        obj.traverse(child => {
+          if (child.isMesh) { child.material = child.material.clone(); child.material.transparent = true; }
+        });
+        setTimeout(() => {
+          const fadeDur = 1000;
+          let t0 = null;
+          (function fade(now) {
+            if (!t0) t0 = now;
+            const t = Math.min((now - t0) / fadeDur, 1);
+            obj.traverse(child => { if (child.isMesh) child.material.opacity = 1 - t; });
+            if (t < 1) { requestAnimationFrame(fade); return; }
+            // 削除・後始末
+            target.object3D.remove(thisWrapper);
+            if (zoneChars[zone] && zoneChars[zone].wrapper === thisWrapper) {
+              const c = zoneChars[zone];
+              c.mixer.stopAllAction();
+              const idx = activeMixers.indexOf(c.mixer);
+              if (idx !== -1) activeMixers.splice(idx, 1);
+              delete zoneChars[zone];
+            }
+            obj.traverse(child => { if (child.isMesh) child.material.opacity = 1.0; });
+          })(performance.now());
+        }, 2000);
+      }
     } else {
       // ランダム位置 + 落下 + opacity フェード消滅（オリジナルテクスチャ維持）
       obj.traverse(child => {
