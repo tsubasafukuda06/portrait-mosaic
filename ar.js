@@ -843,6 +843,19 @@ function setTexture() {
       const size     = box.getSize(new THREE.Vector3());
       const baseSize = hasAnim ? (ZONE_CHAR_SIZES[path] || 0.45) : 0.3;
       entry.cachedScale = baseSize / (Math.max(size.x, size.y, size.z) || 1);
+
+      // matteマテリアルをプリロード時に差し替え（スポーン時の new Material コストを除去）
+      if ((ZONE_CHAR_CONFIG[path] || {}).matte) {
+        scene.traverse(child => {
+          if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({
+              map:       child.material.map || null,
+              roughness: 1.0,
+              metalness: 0.0,
+            });
+          }
+        });
+      }
     });
   });
 })();
@@ -880,15 +893,25 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const arSystem = sceneEl.systems['mindar-image-system'];
   if (!arSystem) { showError('MindARシステムが見つかりません'); return; }
 
-  // GLBシェーダー・テクスチャをGPUに事前転送（スポーン時のラグを軽減）
-  if (sceneEl.renderer) {
+  // GLBシェーダー・テクスチャをGPUに事前転送（1x1オフスクリーンrender）
+  if (sceneEl.renderer && sceneEl.camera) {
     const warmupScene = new THREE.Scene();
     const warmupAdded = [];
     Object.values(glbCache).forEach(entry => {
-      if (entry.scene) { warmupScene.add(entry.scene); warmupAdded.push(entry.scene); }
+      if (!entry.scene) return;
+      entry.scene.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
+      warmupScene.add(entry.scene);
+      warmupAdded.push(entry.scene);
     });
-    sceneEl.renderer.compile(warmupScene, sceneEl.camera);
-    warmupAdded.forEach(s => warmupScene.remove(s));
+    const rt = new THREE.WebGLRenderTarget(1, 1);
+    sceneEl.renderer.setRenderTarget(rt);
+    sceneEl.renderer.render(warmupScene, sceneEl.camera);
+    sceneEl.renderer.setRenderTarget(null);
+    rt.dispose();
+    warmupAdded.forEach(s => {
+      s.traverse(n => { if (n.isMesh) n.frustumCulled = true; });
+      warmupScene.remove(s);
+    });
   }
 
   setTexture();
