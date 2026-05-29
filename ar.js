@@ -584,8 +584,9 @@ function spawnZoneChar(zone) {
   }
 
   loadGLB(ZONE_CHARS[zone], (scene, animations) => {
-    // スキンメッシュを正しくクローン
-    const obj = (THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(scene) : scene.clone(true));
+    // ゾーンごとに1インスタンスのみ → クローン不要、scene をそのまま使う
+    // （clone(true) はスキンメッシュのボーン参照を正しく引き継がないため）
+    const obj = scene;
 
     // スケール（未スケール時のbboxで算出）
     const box    = new THREE.Box3().setFromObject(obj);
