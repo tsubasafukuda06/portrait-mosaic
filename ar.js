@@ -578,7 +578,7 @@ const ZONE_CHAR_SIZES = {
 
 // GLBごとの特殊挙動
 const ZONE_CHAR_CONFIG = {
-  '3d/01.glb': { matte: true },
+  '3d/01.glb': { matte: true, fadeAfter: 2000, speedMult: 3 },
   '3d/02.glb': { matte: true },
   '3d/03.glb': { float: true },        // 横向きのまま空中浮遊
   '3d/04.glb': { fadeAfter: 2000 },    // 2秒ゆっくり移動後フェードアウト
@@ -686,9 +686,10 @@ function spawnZoneChar(zone) {
       const config  = ZONE_CHAR_CONFIG[path] || {};
       const isFloat = config.float;
       const initAngle = Math.random() * Math.PI * 2;
-      const spd       = isFloat             ? 0.04 + Math.random() * 0.03   // 浮遊
-                      : config.fadeAfter  ? 0.02 + Math.random() * 0.01   // 徐行
-                                          : 0.08 + Math.random() * 0.07;  // 歩行
+      const baseSpd   = isFloat                              ? 0.04 + Math.random() * 0.03
+                      : config.fadeAfter && !config.speedMult ? 0.02 + Math.random() * 0.01
+                                                              : 0.08 + Math.random() * 0.07;
+      const spd       = baseSpd * (config.speedMult || 1);
 
       const wrapper = new THREE.Object3D();
       wrapper.position.set(
