@@ -573,15 +573,15 @@ const ZONE_CHARS = {
 // アニメありGLBのターゲットサイズ（デフォルト 0.45）
 const ZONE_CHAR_SIZES = {
   '3d/02.glb': 0.27,   // 0.45 × 0.6
-  '3d/04.glb': 1.80,   // 0.45 × 4
+  '3d/04.glb': 1.26,   // 1.80 × 0.7
 };
 
 // GLBごとの特殊挙動
 const ZONE_CHAR_CONFIG = {
-  '3d/01.glb': { matte: true, fadeAfter: 2000, speedMult: 3 },
-  '3d/02.glb': { matte: true },
-  '3d/03.glb': { float: true },        // 横向きのまま空中浮遊
-  '3d/04.glb': { fadeAfter: 2000 },    // 2秒ゆっくり移動後フェードアウト
+  '3d/01.glb': { matte: true, fadeAfter: 3500, speedMult: 6 },  // 高速×6、3.5秒後消滅
+  '3d/02.glb': { matte: true, fadeAfter: 4000 },                 // 4秒後フェードアウト
+  '3d/03.glb': { float: true },                                   // 空中浮遊・2秒後消滅
+  '3d/04.glb': { fadeAfter: 2000, outerSpawn: true },            // 表紙外スポーン・2秒後消滅
 };
 
 const zoneChars    = {};
@@ -613,7 +613,7 @@ function startMixerLoop() {
       if (c.float) {
         // 浮遊：ゆっくりZ方向に揺れる、向き変更なし
         c.phase = (c.phase || 0) + delta * 1.2;
-        w.position.z = 0.7 + Math.sin(c.phase) * 0.16;
+        w.position.z = 1.05 + Math.sin(c.phase) * 0.24;
       } else {
         // 歩行：進行方向に向かせる（GLB forward = +Y after Rx(π/2)、+π で後ろ向き補正）
         w.rotation.z = Math.atan2(-c.vx, c.vy) + Math.PI;
@@ -691,11 +691,13 @@ function spawnZoneChar(zone) {
                                                               : 0.08 + Math.random() * 0.07;
       const spd       = baseSpd * (config.speedMult || 1);
 
+      const spawnX = config.outerSpawn ? (Math.random() - 0.5) * 2.4 : (Math.random() - 0.5) * 0.9;
+      const spawnY = config.outerSpawn ? (Math.random() - 0.5) * 2.8 : (Math.random() - 0.5) * 1.2;
       const wrapper = new THREE.Object3D();
       wrapper.position.set(
-        (Math.random() - 0.5) * 0.9,
-        (Math.random() - 0.5) * 1.2,
-        isFloat ? 0.6 + Math.random() * 0.4 : 0.05,  // 浮遊は高い位置
+        spawnX,
+        spawnY,
+        isFloat ? 0.9 + Math.random() * 0.6 : 0.05,  // 浮遊は1.5倍高い位置
       );
       if (!isFloat) obj.rotation.set(Math.PI / 2, 0, 0);  // 歩行のみ立たせる
       obj.position.set(0, 0, 0);
