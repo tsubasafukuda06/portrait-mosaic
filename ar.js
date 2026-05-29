@@ -697,6 +697,15 @@ function setTexture() {
 }
 
 // ── 起動 ─────────────────────────────────────────────────────────────────────
+// 全GLBをページ読み込み時にバックグラウンドでキャッシュ
+(function preloadGLBs() {
+  const paths = [
+    ...Object.values(ZONE_CHARS),
+    ...HOSHI_CHARS.filter(c => c.path !== '3d/ichi.glb').map(c => c.path),
+  ];
+  paths.forEach(path => loadGLB(path, () => {}));
+})();
+
 initFaceCanvas();
 initOverlay();
 
