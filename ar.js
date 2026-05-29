@@ -697,13 +697,14 @@ function spawnZoneChar(zone) {
       if (!isFloat) obj.rotation.set(Math.PI / 2, 0, 0);  // 歩行のみ立たせる
       obj.position.set(0, 0, 0);
       if (config.matte) {
+        // GLBのemissiveMap等を完全に排除するため、mapだけ引き継いで新規マテリアルに差し替え
         obj.traverse(child => {
           if (child.isMesh) {
-            child.material.roughness        = 1.0;
-            child.material.metalness        = 0.0;
-            child.material.emissiveIntensity = 0;
-            child.material.emissive.set(0, 0, 0);
-            child.material.emissiveMap      = null;
+            child.material = new THREE.MeshStandardMaterial({
+              map:       child.material.map || null,
+              roughness: 1.0,
+              metalness: 0.0,
+            });
           }
         });
       }
