@@ -349,14 +349,14 @@ const HOSHI_CHARS = [
 const glbCache = {};
 
 function loadGLB(path, cb) {
-  if (glbCache[path]) { cb(glbCache[path]); return; }
+  if (glbCache[path]) { const c = glbCache[path]; cb(c.scene, c.animations); return; }
   if (!THREE.GLTFLoader) { setDebug('GLTFLoader unavailable'); return; }
   setDebug('loading: ' + path);
   const loader = new THREE.GLTFLoader();
   loader.load(path, gltf => {
     setDebug('loaded: ' + path);
-    glbCache[path] = gltf.scene;
-    cb(gltf.scene);
+    glbCache[path] = { scene: gltf.scene, animations: gltf.animations };
+    cb(gltf.scene, gltf.animations);
   }, undefined, err => setDebug('GLB error: ' + err.message));
 }
 
@@ -515,7 +515,7 @@ function spawnHoshiShinichi() {
       return;
     }
 
-    loadGLB(def.path, scene => {
+    loadGLB(def.path, (scene) => {
       const obj = scene.clone(true);
       const mat = createDissolveMaterial();
       obj.traverse(child => {
@@ -523,6 +523,93 @@ function spawnHoshiShinichi() {
       });
       place(obj, i);
     });
+  });
+}
+
+
+// ── ゾーンキャラクター（01〜07.glb） ─────────────────────────────────────────
+const ZONE_CHARS = {
+  0: '3d/01.glb',
+  1: '3d/02.glb',
+  2: '3d/03.glb',
+  4: '3d/04.glb',
+  6: '3d/05.glb',
+  7: '3d/06.glb',
+  8: '3d/07.glb',
+};
+
+const zoneChars    = {};
+const activeMixers = [];
+let   mixerClock   = null;
+
+function startMixerLoop() {
+  if (mixerClock) return;
+  mixerClock = new THREE.Clock();
+  (function tick() {
+    if (activeMixers.length === 0) { mixerClock = null; return; }
+    const delta = mixerClock.getDelta();
+    for (const m of activeMixers) m.update(delta);
+    requestAnimationFrame(tick);
+  })();
+}
+
+function clearAllZoneChars() {
+  const target = document.getElementById('ar-target');
+  Object.keys(zoneChars).forEach(z => {
+    const c = zoneChars[z];
+    if (target && target.object3D) target.object3D.remove(c.obj);
+    if (c.mixer) {
+      c.mixer.stopAllAction();
+      const idx = activeMixers.indexOf(c.mixer);
+      if (idx !== -1) activeMixers.splice(idx, 1);
+    }
+    delete zoneChars[z];
+  });
+}
+
+function spawnZoneChar(zone) {
+  const target = document.getElementById('ar-target');
+  if (!target || !target.object3D) return;
+
+  // 既存キャラを削除（リスポーン）
+  if (zoneChars[zone]) {
+    const old = zoneChars[zone];
+    target.object3D.remove(old.obj);
+    if (old.mixer) {
+      old.mixer.stopAllAction();
+      const idx = activeMixers.indexOf(old.mixer);
+      if (idx !== -1) activeMixers.splice(idx, 1);
+    }
+    delete zoneChars[zone];
+  }
+
+  loadGLB(ZONE_CHARS[zone], (scene, animations) => {
+    // スキンメッシュを正しくクローン
+    const obj = (THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(scene) : scene.clone(true));
+
+    // スケール（未スケール時のbboxで算出）
+    const box    = new THREE.Box3().setFromObject(obj);
+    const size   = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    obj.scale.setScalar(0.3 / maxDim);
+
+    // ゾーン中心のAR平面上の座標
+    const col = zone % 3;
+    const row = Math.floor(zone / 3);
+    obj.position.set((col - 1) * 0.35, (1 - row) * 0.47, 0.05);
+
+    target.object3D.add(obj);
+
+    // AnimationMixer セットアップ
+    if (animations && animations.length > 0) {
+      const mixer = new THREE.AnimationMixer(obj);
+      mixer.clipAction(animations[0]).play();
+      activeMixers.push(mixer);
+      zoneChars[zone] = { obj, mixer };
+      startMixerLoop();
+    } else {
+      zoneChars[zone] = { obj, mixer: null };
+    }
   });
 }
 
@@ -538,8 +625,8 @@ document.addEventListener('click', (e) => {
   spawnZoneFlash(zone);
   ensureOverlayLoop();
   if (zone === 3) { playZone3Sound(); spawnHoshiShinichi(); }
-
   if (zone === 5) playWink();
+  if (ZONE_CHARS[zone]) spawnZoneChar(zone);
 });
 
 // ── AR イベント ───────────────────────────────────────────────────────────────
@@ -552,6 +639,7 @@ function setupAREvents() {
   target.addEventListener('targetLost', () => {
     isTracking = false;
     setDebug('🔍 表紙を探しています...');
+    clearAllZoneChars();
   });
 }
 
