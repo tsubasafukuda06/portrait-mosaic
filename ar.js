@@ -611,7 +611,7 @@ function startMixerLoop() {
       if (c.float) {
         // 浮遊：ゆっくりZ方向に揺れる、向き変更なし
         c.phase = (c.phase || 0) + delta * 1.2;
-        w.position.z = 0.35 + Math.sin(c.phase) * 0.08;
+        w.position.z = 0.7 + Math.sin(c.phase) * 0.16;
       } else {
         // 歩行：進行方向に向かせる（GLB forward = +Y after Rx(π/2)、+π で後ろ向き補正）
         w.rotation.z = Math.atan2(-c.vx, c.vy) + Math.PI;
@@ -691,7 +691,7 @@ function spawnZoneChar(zone) {
       wrapper.position.set(
         (Math.random() - 0.5) * 0.9,
         (Math.random() - 0.5) * 1.2,
-        isFloat ? 0.3 + Math.random() * 0.2 : 0.05,  // 浮遊は高い位置
+        isFloat ? 0.6 + Math.random() * 0.4 : 0.05,  // 浮遊は高い位置
       );
       if (!isFloat) obj.rotation.set(Math.PI / 2, 0, 0);  // 歩行のみ立たせる
       obj.position.set(0, 0, 0);
