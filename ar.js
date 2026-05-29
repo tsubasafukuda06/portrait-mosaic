@@ -698,7 +698,13 @@ function spawnZoneChar(zone) {
       obj.position.set(0, 0, 0);
       if (config.matte) {
         obj.traverse(child => {
-          if (child.isMesh) { child.material.roughness = 1.0; child.material.metalness = 0.0; }
+          if (child.isMesh) {
+            child.material.roughness        = 1.0;
+            child.material.metalness        = 0.0;
+            child.material.emissiveIntensity = 0;
+            child.material.emissive.set(0, 0, 0);
+            child.material.emissiveMap      = null;
+          }
         });
       }
       wrapper.add(obj);
