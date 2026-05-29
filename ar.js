@@ -605,7 +605,7 @@ function startMixerLoop() {
       w.position.y += c.vy * delta;
 
       // 境界で反転（表紙 + 少し外）
-      const BX = 0.7, BY = 0.9;
+      const BX = 0.84, BY = 0.98;
       if (Math.abs(w.position.x) > BX) { c.vx *= -1; w.position.x = Math.sign(w.position.x) * BX; }
       if (Math.abs(w.position.y) > BY) { c.vy *= -1; w.position.y = Math.sign(w.position.y) * BY; }
 
