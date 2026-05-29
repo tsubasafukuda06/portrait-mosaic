@@ -570,6 +570,12 @@ const ZONE_CHARS = {
   8: '3d/07.glb',
 };
 
+// アニメありGLBのターゲットサイズ（デフォルト 0.45）
+const ZONE_CHAR_SIZES = {
+  '3d/01.glb': 0.90,   // 0.45 × 2
+  '3d/02.glb': 0.27,   // 0.45 × 0.6
+};
+
 const zoneChars    = {};
 const activeMixers = [];
 let   mixerClock   = null;
@@ -596,8 +602,8 @@ function startMixerLoop() {
       if (Math.abs(w.position.x) > BX) { c.vx *= -1; w.position.x = Math.sign(w.position.x) * BX; }
       if (Math.abs(w.position.y) > BY) { c.vy *= -1; w.position.y = Math.sign(w.position.y) * BY; }
 
-      // 進行方向に向かせる（GLB forward = +Y after Rx(π/2)）
-      w.rotation.z = Math.atan2(-c.vx, c.vy);
+      // 進行方向に向かせる（GLB forward = +Y after Rx(π/2)、+π で後ろ向き補正）
+      w.rotation.z = Math.atan2(-c.vx, c.vy) + Math.PI;
 
       // ランダムに方向転換
       if (now > c.nextTurn) {
@@ -656,7 +662,7 @@ function spawnZoneChar(zone) {
       if (hasAnim) obj.scale.set(1, 1, 1);  // アニメありは前回スケールをリセット
       const box  = new THREE.Box3().setFromObject(obj);
       const size = box.getSize(new THREE.Vector3());
-      const targetSize = hasAnim ? 0.45 : 0.3;
+      const targetSize = hasAnim ? (ZONE_CHAR_SIZES[ZONE_CHARS[zone]] || 0.45) : 0.3;
       entry.cachedScale = targetSize / (Math.max(size.x, size.y, size.z) || 1);
     }
     obj.scale.setScalar(entry.cachedScale);
