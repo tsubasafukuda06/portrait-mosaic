@@ -628,7 +628,8 @@ function spawnZoneChar(zone) {
       if (hasAnim) obj.scale.set(1, 1, 1);  // アニメありは前回スケールをリセット
       const box  = new THREE.Box3().setFromObject(obj);
       const size = box.getSize(new THREE.Vector3());
-      entry.cachedScale = 0.3 / (Math.max(size.x, size.y, size.z) || 1);
+      const targetSize = hasAnim ? 0.45 : 0.3;
+      entry.cachedScale = targetSize / (Math.max(size.x, size.y, size.z) || 1);
     }
     obj.scale.setScalar(entry.cachedScale);
 
@@ -636,6 +637,7 @@ function spawnZoneChar(zone) {
       // ゾーン中心に固定配置、アニメーションループ、再タップでリスポーン
       const col = zone % 3;
       const row = Math.floor(zone / 3);
+      obj.rotation.set(Math.PI / 2, 0, 0);  // Y-up → AR平面から立たせる
       obj.position.set((col - 1) * 0.35, (1 - row) * 0.47, 0.05);
       target.object3D.add(obj);
 
