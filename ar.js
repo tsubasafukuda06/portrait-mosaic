@@ -580,7 +580,35 @@ function startMixerLoop() {
   (function tick() {
     if (activeMixers.length === 0) { mixerClock = null; return; }
     const delta = mixerClock.getDelta();
+    const now   = Date.now();
+
     for (const m of activeMixers) m.update(delta);
+
+    // 歩き回りキャラの移動更新
+    Object.values(zoneChars).forEach(c => {
+      if (!c.wrapper) return;
+      const w = c.wrapper;
+      w.position.x += c.vx * delta;
+      w.position.y += c.vy * delta;
+
+      // 境界で反転（表紙 + 少し外）
+      const BX = 0.7, BY = 0.9;
+      if (Math.abs(w.position.x) > BX) { c.vx *= -1; w.position.x = Math.sign(w.position.x) * BX; }
+      if (Math.abs(w.position.y) > BY) { c.vy *= -1; w.position.y = Math.sign(w.position.y) * BY; }
+
+      // 進行方向に向かせる（GLB forward = +Y after Rx(π/2)）
+      w.rotation.z = Math.atan2(-c.vx, c.vy);
+
+      // ランダムに方向転換
+      if (now > c.nextTurn) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd   = 0.08 + Math.random() * 0.07;
+        c.vx = Math.cos(angle) * spd;
+        c.vy = Math.sin(angle) * spd;
+        c.nextTurn = now + 2000 + Math.random() * 3000;
+      }
+    });
+
     requestAnimationFrame(tick);
   })();
 }
@@ -589,7 +617,7 @@ function clearAllZoneChars() {
   const target = document.getElementById('ar-target');
   Object.keys(zoneChars).forEach(z => {
     const c = zoneChars[z];
-    if (target && target.object3D) target.object3D.remove(c.obj);
+    if (target && target.object3D) target.object3D.remove(c.wrapper || c.obj);
     if (c.mixer) {
       c.mixer.stopAllAction();
       const idx = activeMixers.indexOf(c.mixer);
@@ -606,7 +634,7 @@ function spawnZoneChar(zone) {
   // アニメ付きキャラのみ追跡・削除（リスポーン）
   if (zoneChars[zone]) {
     const old = zoneChars[zone];
-    target.object3D.remove(old.obj);
+    target.object3D.remove(old.wrapper || old.obj);
     if (old.mixer) {
       old.mixer.stopAllAction();
       const idx = activeMixers.indexOf(old.mixer);
@@ -634,17 +662,27 @@ function spawnZoneChar(zone) {
     obj.scale.setScalar(entry.cachedScale);
 
     if (hasAnim) {
-      // ゾーン中心に固定配置、アニメーションループ、再タップでリスポーン
-      const col = zone % 3;
-      const row = Math.floor(zone / 3);
+      // ランダム位置に出現 → 歩き回る
+      const initAngle = Math.random() * Math.PI * 2;
+      const spd       = 0.08 + Math.random() * 0.07;
+
+      // wrapper: 位置・向きを管理 / obj: 立ち姿勢の回転を固定
+      const wrapper = new THREE.Object3D();
+      wrapper.position.set((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 1.2, 0.05);
       obj.rotation.set(Math.PI / 2, 0, 0);  // Y-up → AR平面から立たせる
-      obj.position.set((col - 1) * 0.35, (1 - row) * 0.47, 0.05);
-      target.object3D.add(obj);
+      obj.position.set(0, 0, 0);
+      wrapper.add(obj);
+      target.object3D.add(wrapper);
 
       const mixer = new THREE.AnimationMixer(obj);
       mixer.clipAction(animations[0]).play();
       activeMixers.push(mixer);
-      zoneChars[zone] = { obj, mixer };
+      zoneChars[zone] = {
+        obj, wrapper, mixer,
+        vx: Math.cos(initAngle) * spd,
+        vy: Math.sin(initAngle) * spd,
+        nextTurn: Date.now() + 2000 + Math.random() * 2000,
+      };
       startMixerLoop();
     } else {
       // ランダム位置 + 落下 + opacity フェード消滅（オリジナルテクスチャ維持）
