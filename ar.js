@@ -360,6 +360,38 @@ function loadGLB(path, cb) {
   }, undefined, err => setDebug('GLB error: ' + err.message));
 }
 
+// オリジナルマテリアルを維持したまま落下 + opacity フェード（05/06/07 用）
+function animateGLBOpacity(obj, target, startZ, rotDir, rotSpd) {
+  const floorZ  = 0.02;
+  const fallDur = 750;
+  const holdDur = 700;
+  const fadeDur = 2000;
+
+  function easeInQuart(t) { return t * t * t * t; }
+  let t0 = null;
+
+  function animFall(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / fallDur, 1);
+    obj.position.z = startZ + (floorZ - startZ) * easeInQuart(t);
+    obj.rotation.y += rotSpd * rotDir;
+    if (t < 1) { requestAnimationFrame(animFall); }
+    else { setTimeout(() => { t0 = null; requestAnimationFrame(animFade); }, holdDur); }
+  }
+
+  function animFade(now) {
+    if (!t0) t0 = now;
+    const t = Math.min((now - t0) / fadeDur, 1);
+    obj.traverse(child => {
+      if (child.isMesh) child.material.opacity = 1 - t;
+    });
+    if (t < 1) { requestAnimationFrame(animFade); }
+    else { target.object3D.remove(obj); }
+  }
+
+  requestAnimationFrame(animFall);
+}
+
 function animateGLB(obj, target, startZ, rotDir, rotSpd, i, S) {
   const floorZ     = 0.02;
   const fallDur    = 750 + i * 60;
@@ -613,9 +645,12 @@ function spawnZoneChar(zone) {
       zoneChars[zone] = { obj, mixer };
       startMixerLoop();
     } else {
-      // hoshi 同様：ランダム位置 + 落下 + ディゾルブ消滅
+      // ランダム位置 + 落下 + opacity フェード消滅（オリジナルテクスチャ維持）
       obj.traverse(child => {
-        if (child.isMesh) child.material = createDissolveMaterial();
+        if (child.isMesh) {
+          child.material = child.material.clone();
+          child.material.transparent = true;
+        }
       });
       const x      = (Math.random() - 0.5) * 0.9;
       const y      = (Math.random() - 0.5) * 1.2;
@@ -624,7 +659,7 @@ function spawnZoneChar(zone) {
       const rotSpd = 0.015 + Math.random() * 0.015;
       obj.position.set(x, y, startZ);
       target.object3D.add(obj);
-      animateGLB(obj, target, startZ, rotDir, rotSpd, 0, entry.cachedScale);
+      animateGLBOpacity(obj, target, startZ, rotDir, rotSpd);
     }
   });
 }
