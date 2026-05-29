@@ -732,7 +732,7 @@ function spawnZoneChar(zone) {
       });
       const x      = (Math.random() - 0.5) * 0.9;
       const y      = (Math.random() - 0.5) * 1.2;
-      const startZ = 0.5 + Math.random() * 0.1;
+      const startZ = 1.0 + Math.random() * 0.2;
       const rotDir = Math.random() > 0.5 ? 1 : -1;
       const rotSpd = 0.015 + Math.random() * 0.015;
       obj.position.set(x, y, startZ);
