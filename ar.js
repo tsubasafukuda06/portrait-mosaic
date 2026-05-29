@@ -573,13 +573,15 @@ const ZONE_CHARS = {
 // アニメありGLBのターゲットサイズ（デフォルト 0.45）
 const ZONE_CHAR_SIZES = {
   '3d/02.glb': 0.27,   // 0.45 × 0.6
+  '3d/04.glb': 1.80,   // 0.45 × 4
 };
 
 // GLBごとの特殊挙動
 const ZONE_CHAR_CONFIG = {
-  '3d/01.glb': { matte: true },  // マット質感（roughness=1, metalness=0）
+  '3d/01.glb': { matte: true },
   '3d/02.glb': { matte: true },
-  '3d/03.glb': { float: true },  // 横向きのまま空中浮遊
+  '3d/03.glb': { float: true },        // 横向きのまま空中浮遊
+  '3d/04.glb': { fadeAfter: 2000 },    // 2秒ゆっくり移動後フェードアウト
 };
 
 const zoneChars    = {};
@@ -684,8 +686,9 @@ function spawnZoneChar(zone) {
       const config  = ZONE_CHAR_CONFIG[path] || {};
       const isFloat = config.float;
       const initAngle = Math.random() * Math.PI * 2;
-      const spd       = isFloat ? 0.04 + Math.random() * 0.03   // 浮遊：ゆっくり
-                                : 0.08 + Math.random() * 0.07;  // 歩行：通常速度
+      const spd       = isFloat             ? 0.04 + Math.random() * 0.03   // 浮遊
+                      : config.fadeAfter  ? 0.02 + Math.random() * 0.01   // 徐行
+                                          : 0.08 + Math.random() * 0.07;  // 歩行
 
       const wrapper = new THREE.Object3D();
       wrapper.position.set(
@@ -723,8 +726,9 @@ function spawnZoneChar(zone) {
       };
       startMixerLoop();
 
-      // 浮遊キャラは2秒後にフェードアウト
-      if (isFloat) {
+      // 浮遊 or fadeAfter キャラ：指定秒数後にフェードアウト消滅
+      if (isFloat || config.fadeAfter) {
+        const delay = isFloat ? 2000 : config.fadeAfter;
         const thisWrapper = wrapper;
         obj.traverse(child => {
           if (child.isMesh) { child.material = child.material.clone(); child.material.transparent = true; }
@@ -737,7 +741,6 @@ function spawnZoneChar(zone) {
             const t = Math.min((now - t0) / fadeDur, 1);
             obj.traverse(child => { if (child.isMesh) child.material.opacity = 1 - t; });
             if (t < 1) { requestAnimationFrame(fade); return; }
-            // 削除・後始末
             target.object3D.remove(thisWrapper);
             if (zoneChars[zone] && zoneChars[zone].wrapper === thisWrapper) {
               const c = zoneChars[zone];
@@ -748,7 +751,7 @@ function spawnZoneChar(zone) {
             }
             obj.traverse(child => { if (child.isMesh) child.material.opacity = 1.0; });
           })(performance.now());
-        }, 2000);
+        }, delay);
       }
     } else {
       // ランダム位置 + 落下 + opacity フェード消滅（オリジナルテクスチャ維持）
