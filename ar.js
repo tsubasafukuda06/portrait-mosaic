@@ -855,18 +855,18 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   // Three.jsライト追加（MeshStandardMaterialの陰影に必要）
   const threeScene = sceneEl.object3D;
   if (!threeScene.getObjectByName('_charAmbient')) {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
     ambient.name = '_charAmbient';
     threeScene.add(ambient);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
     dirLight.name = '_charDir';
-    dirLight.position.set(1, 3, 2);  // 右上・手前から照らす
+    dirLight.position.set(1, 3, 2);
     threeScene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xaaccff, 0.4);
+    const fillLight = new THREE.DirectionalLight(0xaaccff, 0.2);
     fillLight.name = '_charFill';
-    fillLight.position.set(-1, -1, 1);  // 左下から弱い青白い補助光
+    fillLight.position.set(-1, -1, 1);
     threeScene.add(fillLight);
   }
 
