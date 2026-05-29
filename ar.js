@@ -572,7 +572,6 @@ const ZONE_CHARS = {
 
 // アニメありGLBのターゲットサイズ（デフォルト 0.45）
 const ZONE_CHAR_SIZES = {
-  '3d/01.glb': 0.90,   // 0.45 × 2
   '3d/02.glb': 0.27,   // 0.45 × 0.6
 };
 
