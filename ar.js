@@ -578,6 +578,8 @@ const ZONE_CHAR_SIZES = {
 
 // GLBごとの特殊挙動
 const ZONE_CHAR_CONFIG = {
+  '3d/01.glb': { matte: true },  // マット質感（roughness=1, metalness=0）
+  '3d/02.glb': { matte: true },
   '3d/03.glb': { float: true },  // 横向きのまま空中浮遊
 };
 
@@ -694,6 +696,11 @@ function spawnZoneChar(zone) {
       );
       if (!isFloat) obj.rotation.set(Math.PI / 2, 0, 0);  // 歩行のみ立たせる
       obj.position.set(0, 0, 0);
+      if (config.matte) {
+        obj.traverse(child => {
+          if (child.isMesh) { child.material.roughness = 1.0; child.material.metalness = 0.0; }
+        });
+      }
       wrapper.add(obj);
       target.object3D.add(wrapper);
 
