@@ -529,8 +529,8 @@ function spawnHoshiShinichi() {
     const center = box.getCenter(new THREE.Vector3());
     obj.position.sub(center.multiplyScalar(s));
 
-    const x      = (Math.random() - 0.5) * 0.9;
-    const y      = (Math.random() - 0.5) * 1.2;
+    const x      = (Math.random() - 0.5) * 2.4;
+    const y      = (Math.random() - 0.5) * 2.8;
     const startZ = 0.45 + i * 0.04 + Math.random() * 0.1;
     const rotDir = (Math.random() > 0.5 ? 1 : -1);
     const rotSpd = 0.015 + Math.random() * 0.015;
@@ -652,8 +652,8 @@ function spawnZoneChar(zone) {
           child.material.transparent = true;
         }
       });
-      const x      = (Math.random() - 0.5) * 0.9;
-      const y      = (Math.random() - 0.5) * 1.2;
+      const x      = (Math.random() - 0.5) * 2.4;
+      const y      = (Math.random() - 0.5) * 2.8;
       const startZ = 0.5 + Math.random() * 0.1;
       const rotDir = Math.random() > 0.5 ? 1 : -1;
       const rotSpd = 0.015 + Math.random() * 0.015;
